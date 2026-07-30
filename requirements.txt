@@ -1,5 +1,6 @@
 fastapi
 uvicorn
+gunicorn
 asyncpg
 python-jose[cryptography]
 passlib[bcrypt]
