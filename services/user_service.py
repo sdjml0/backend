@@ -1,3 +1,4 @@
+from typing import Optional
 from uuid import UUID
 
 from fastapi import HTTPException, status
@@ -98,9 +99,14 @@ class UserService:
 
 
     @staticmethod
-    async def get_profile(userid: UUID):
+    async def get_profile(userid: Optional[UUID] = None):
 
-        user = await UserRepository.get_user_by_id(userid)
+        user = None
+        if userid:
+            user = await UserRepository.get_user_by_id(userid)
+
+        if user is None:
+            user = await UserRepository.get_first_user()
 
         if user is None:
             raise HTTPException(
@@ -108,14 +114,15 @@ class UserService:
                 detail="User not found."
             )
 
+        user_dict = dict(user)
 
         return UserResponse(
             userid=user["userid"],
             name=user["name"],
             email=user["email"],
-            phone=user["phone"],
-            address=user["address"],
-            city=user["city"],
-            postalcode=user["postalcode"],
-            country=user["country"],
+            phone=user_dict.get("phone"),
+            address=user_dict.get("address"),
+            city=user_dict.get("city"),
+            postalcode=user_dict.get("postalcode"),
+            country=user_dict.get("country"),
         )

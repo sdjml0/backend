@@ -50,5 +50,4 @@ async def login(user: UserLogin):
 async def profile(
     userid: Optional[UUID] = Depends(get_current_user_optional)
 ):
-    target_user = userid or DEMO_USER_ID
-    return await UserService.get_profile(target_user)
+    return await UserService.get_profile(userid)

@@ -109,4 +109,3 @@ class UserRepository:
         """
 
         return await db.fetchrow(query, email)
-    
