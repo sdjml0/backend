@@ -109,3 +109,16 @@ class UserRepository:
         """
 
         return await db.fetchrow(query, email)
+
+    @staticmethod
+    async def get_first_user():
+
+        query = """
+            SELECT *
+            FROM users
+            ORDER BY userid
+            LIMIT 1
+        """
+
+        return await db.fetchrow(query)
+
