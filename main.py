@@ -4,6 +4,8 @@ import os
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.responses import Response
 
 from core.database import db
 from routers.auth_router import router as auth_router
@@ -35,20 +37,15 @@ async def lifespan(app: FastAPI):
         pass
 
 
-from fastapi.responses import Response
-
 app = FastAPI(
     title="E-Commerce API",
     version="1.0.0",
     lifespan=lifespan,
 )
 
-
-from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.responses import Response
-
 # Compression & Security Configuration
 app.add_middleware(GZipMiddleware, minimum_size=500)
+
 
 @app.middleware("http")
 async def add_security_headers(request, call_next):
@@ -58,6 +55,7 @@ async def add_security_headers(request, call_next):
     response.headers["X-XSS-Protection"] = "1; mode=block"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     return response
+
 
 # CORS Configuration
 origins = [
@@ -70,7 +68,7 @@ origins = [
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
-    allow_origin_regex=r"https://.*\.vercel\.app",
+    allow_origin_regex=r"https://.*|http://localhost:.*|http://127\.0\.0\.1:.*",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

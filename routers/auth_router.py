@@ -42,6 +42,14 @@ async def login(user: UserLogin):
     return await UserService.login(user)
 
 
+@router.get("/login")
+async def login_info():
+    return {
+        "message": "Authentication endpoint active. Send a POST request with email and password.",
+        "status": "ok"
+    }
+
+
 
 @router.get(
     "/profile",
