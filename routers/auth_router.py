@@ -1,17 +1,20 @@
+from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, status
 
 from schemas.user import (
     LoginResponse,
+    SignupResponse,
     UserLogin,
     UserSignup,
     UserResponse
 )
 
 from services.user_service import UserService
-from core.dependencies import get_current_user
+from core.dependencies import get_current_user_optional
 
+DEMO_USER_ID = UUID("5d09522b-a187-46bc-bf57-2c9b4407dddf")
 
 router = APIRouter(
     prefix="/auth",
@@ -21,6 +24,7 @@ router = APIRouter(
 
 @router.post(
     "/signup",
+    response_model=SignupResponse,
     status_code=status.HTTP_201_CREATED
 )
 async def signup(user: UserSignup):
@@ -44,7 +48,7 @@ async def login(user: UserLogin):
     response_model=UserResponse
 )
 async def profile(
-    userid: UUID = Depends(get_current_user)
+    userid: Optional[UUID] = Depends(get_current_user_optional)
 ):
-
-    return await UserService.get_profile(userid)
+    target_user = userid or DEMO_USER_ID
+    return await UserService.get_profile(target_user)

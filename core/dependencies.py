@@ -46,3 +46,16 @@ async def get_current_user_optional(
         return UUID(userid) if userid else None
     except Exception:
         return None
+
+
+async def get_current_user_payload(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+) -> dict:
+    token = credentials.credentials
+    payload = decode_access_token(token)
+    if not payload.get("sub"):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token."
+        )
+    return payload

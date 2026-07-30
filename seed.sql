@@ -84,16 +84,17 @@ CREATE TABLE inventory_alerts (
 -- Primary User (userid: '5d09522b-a187-46bc-bf57-2c9b4407dddf')
 INSERT INTO users (userid, name, email, phone, address, city, postalcode, country, password)
 VALUES 
-    ('5d09522b-a187-46bc-bf57-2c9b4407dddf', 'Alex Morgan', 'alex.morgan@example.com', '+1 555-0198', '123 Commerce St', 'San Francisco', '94105', 'United States', '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeg6Lruj3vjPGga31lW'),
-    ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a12', 'Priya Sharma', 'priya.sharma@example.com', '+91 9876543210', '45 MG Road', 'Bangalore', '560001', 'India', '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeg6Lruj3vjPGga31lW'),
-    ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a13', 'David Miller', 'david.miller@example.com', '+44 20 7946 0912', '88 Baker St', 'London', 'NW1 6XE', 'United Kingdom', '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeg6Lruj3vjPGga31lW'),
-    ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a14', 'Sarah Jenkins', 'sarah.jenkins@example.com', '+1 555-0144', '742 Evergreen Terrace', 'Springfield', '97477', 'United States', '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeg6Lruj3vjPGga31lW'),
-    ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a15', 'Michael Chen', 'michael.chen@example.com', '+1 555-0177', '500 Market St', 'Seattle', '98101', 'United States', '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeg6Lruj3vjPGga31lW'),
-    ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a16', 'Elena Rostova', 'elena.rostova@example.com', '+49 30 123456', 'Kurfürstendamm 21', 'Berlin', '10719', 'Germany', '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeg6Lruj3vjPGga31lW'),
-    ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a17', 'Kenji Sato', 'kenji.sato@example.com', '+81 3 1234 5678', '1-2-3 Ginza', 'Tokyo', '104-0061', 'Japan', '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeg6Lruj3vjPGga31lW'),
-    ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a18', 'Lucas Silva', 'lucas.silva@example.com', '+55 11 98765-4321', 'Av. Paulista 1000', 'São Paulo', '01310-100', 'Brazil', '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeg6Lruj3vjPGga31lW'),
-    ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a19', 'Chloe Dubois', 'chloe.dubois@example.com', '+33 1 42 68 55 00', '15 Rue de Rivoli', 'Paris', '75004', 'France', '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeg6Lruj3vjPGga31lW'),
-    ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a20', 'Liam O''Connor', 'liam.oconnor@example.com', '+61 2 9374 4000', '200 George St', 'Sydney', '2000', 'Australia', '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeg6Lruj3vjPGga31lW');
+    ('5d09522b-a187-46bc-bf57-2c9b4407dddf', 'Alex Morgan', 'alex.morgan@example.com', '+1 555-0198', '123 Commerce St', 'San Francisco', '94105', 'United States', '$2b$12$oYqUsOKiFQD1osgW6lAPC.bwStMDnkEO4M8yVsyjYvWW7SrY.jUgW'),
+    ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a12', 'Priya Sharma', 'priya.sharma@example.com', '+91 9876543210', '45 MG Road', 'Bangalore', '560001', 'India', '$2b$12$oYqUsOKiFQD1osgW6lAPC.bwStMDnkEO4M8yVsyjYvWW7SrY.jUgW'),
+    ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a13', 'David Miller', 'david.miller@example.com', '+44 20 7946 0912', '88 Baker St', 'London', 'NW1 6XE', 'United Kingdom', '$2b$12$oYqUsOKiFQD1osgW6lAPC.bwStMDnkEO4M8yVsyjYvWW7SrY.jUgW'),
+    ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a14', 'Sarah Jenkins', 'sarah.jenkins@example.com', '+1 555-0144', '742 Evergreen Terrace', 'Springfield', '97477', 'United States', '$2b$12$oYqUsOKiFQD1osgW6lAPC.bwStMDnkEO4M8yVsyjYvWW7SrY.jUgW'),
+    ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a15', 'Michael Chen', 'michael.chen@example.com', '+1 555-0177', '500 Market St', 'Seattle', '98101', 'United States', '$2b$12$oYqUsOKiFQD1osgW6lAPC.bwStMDnkEO4M8yVsyjYvWW7SrY.jUgW'),
+    ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a16', 'Elena Rostova', 'elena.rostova@example.com', '+49 30 123456', 'Kurfürstendamm 21', 'Berlin', '10719', 'Germany', '$2b$12$oYqUsOKiFQD1osgW6lAPC.bwStMDnkEO4M8yVsyjYvWW7SrY.jUgW'),
+    ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a17', 'Kenji Sato', 'kenji.sato@example.com', '+81 3 1234 5678', '1-2-3 Ginza', 'Tokyo', '104-0061', 'Japan', '$2b$12$oYqUsOKiFQD1osgW6lAPC.bwStMDnkEO4M8yVsyjYvWW7SrY.jUgW'),
+    ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a18', 'Lucas Silva', 'lucas.silva@example.com', '+55 11 98765-4321', 'Av. Paulista 1000', 'São Paulo', '01310-100', 'Brazil', '$2b$12$oYqUsOKiFQD1osgW6lAPC.bwStMDnkEO4M8yVsyjYvWW7SrY.jUgW'),
+    ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a19', 'Chloe Dubois', 'chloe.dubois@example.com', '+33 1 42 68 55 00', '15 Rue de Rivoli', 'Paris', '75004', 'France', '$2b$12$oYqUsOKiFQD1osgW6lAPC.bwStMDnkEO4M8yVsyjYvWW7SrY.jUgW'),
+    ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a20', 'Liam O''Connor', 'liam.oconnor@example.com', '+61 2 9374 4000', '200 George St', 'Sydney', '2000', 'Australia', '$2b$12$oYqUsOKiFQD1osgW6lAPC.bwStMDnkEO4M8yVsyjYvWW7SrY.jUgW');
+
 
 -- Dashboard Summary for User 5d09522b-a187-46bc-bf57-2c9b4407dddf
 INSERT INTO dashboard_summary (summaryid, userid, revenue, orders, units_sold, refunds, profit, average_order_value)
@@ -155,3 +156,15 @@ VALUES
     ('e8888888-8888-8888-8888-888888888888', '5d09522b-a187-46bc-bf57-2c9b4407dddf', 'c9999999-9999-9999-9999-999999999999', 14, 'Low Stock'),
     ('e9999999-9999-9999-9999-999999999999', '5d09522b-a187-46bc-bf57-2c9b4407dddf', 'c0000000-0000-0000-0000-000000000000', 0, 'Out of Stock'),
     ('e0000000-0000-0000-0000-000000000000', '5d09522b-a187-46bc-bf57-2c9b4407dddf', 'c1111111-1111-1111-1111-111111111111', 18, 'Low Stock');
+
+-- Performance Indexes for Scalability
+CREATE INDEX IF NOT EXISTS idx_products_userid ON products(userid);
+CREATE INDEX IF NOT EXISTS idx_orders_userid ON orders(userid);
+CREATE INDEX IF NOT EXISTS idx_stores_userid ON stores(userid);
+CREATE INDEX IF NOT EXISTS idx_inventory_alerts_userid ON inventory_alerts(userid);
+CREATE INDEX IF NOT EXISTS idx_orders_created_at ON orders(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_orders_userid_storeid ON orders(userid, storeid);
+CREATE INDEX IF NOT EXISTS idx_orders_userid_created_at ON orders(userid, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_products_userid_units_sold ON products(userid, units_sold DESC);
+
+

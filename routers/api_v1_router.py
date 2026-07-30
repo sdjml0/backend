@@ -65,6 +65,16 @@ async def get_marketplace_share(
     return await DashboardService.get_marketplace_shares(userid)
 
 
+@router.get("/orders")
+async def get_user_orders(
+    userid: Optional[UUID] = Depends(get_current_user_optional)
+):
+    """
+    List of orders associated with the user
+    """
+    return await DashboardService.get_user_orders(userid)
+
+
 @router.get("/orders/recent")
 async def get_recent_orders(
     userid: Optional[UUID] = Depends(get_current_user_optional)
@@ -73,6 +83,16 @@ async def get_recent_orders(
     List of recent orders
     """
     return await DashboardService.get_recent_orders(userid)
+
+
+@router.get("/products")
+async def get_user_products(
+    userid: Optional[UUID] = Depends(get_current_user_optional)
+):
+    """
+    List of products associated with the user
+    """
+    return await DashboardService.get_user_products(userid)
 
 
 @router.get("/products/top-selling")
@@ -85,6 +105,16 @@ async def get_top_selling_products(
     return await DashboardService.get_top_products(userid)
 
 
+@router.get("/inventory")
+async def get_inventory(
+    userid: Optional[UUID] = Depends(get_current_user_optional)
+):
+    """
+    List of all inventory stock items
+    """
+    return await DashboardService.get_user_inventory(userid)
+
+
 @router.get("/inventory/alerts")
 async def get_inventory_alerts(
     userid: Optional[UUID] = Depends(get_current_user_optional)
@@ -93,3 +123,4 @@ async def get_inventory_alerts(
     Inventory low stock alerts
     """
     return await DashboardService.get_inventory_alerts(userid)
+

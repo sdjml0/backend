@@ -50,6 +50,20 @@ class DashboardRepository:
         return await db.fetch_all(query, userid, conn=conn)
 
     @staticmethod
+    async def get_products(userid: UUID, conn: Optional[asyncpg.Connection] = None):
+        query = """
+            SELECT
+                productid,
+                product_name,
+                units_sold,
+                revenue
+            FROM products
+            WHERE userid=$1
+            ORDER BY units_sold DESC
+        """
+        return await db.fetch_all(query, userid, conn=conn)
+
+    @staticmethod
     async def get_top_products(userid: UUID, conn: Optional[asyncpg.Connection] = None):
         query = """
             SELECT
@@ -61,6 +75,22 @@ class DashboardRepository:
             WHERE userid=$1
             ORDER BY revenue DESC
             LIMIT 10
+        """
+        return await db.fetch_all(query, userid, conn=conn)
+
+    @staticmethod
+    async def get_inventory(userid: UUID, conn: Optional[asyncpg.Connection] = None):
+        query = """
+            SELECT
+                ia.alert_id,
+                ia.productid,
+                p.product_name,
+                ia.stock,
+                ia.alert_type
+            FROM inventory_alerts ia
+            JOIN products p ON ia.productid = p.productid
+            WHERE ia.userid=$1
+            ORDER BY ia.stock ASC
         """
         return await db.fetch_all(query, userid, conn=conn)
 
@@ -77,6 +107,25 @@ class DashboardRepository:
             WHERE ia.userid=$1
         """
         return await db.fetch_all(query, userid, conn=conn)
+
+    @staticmethod
+    async def get_all_orders(userid: UUID, limit: int = 50, conn: Optional[asyncpg.Connection] = None):
+        query = """
+            SELECT
+                o.orderid,
+                o.customer_name,
+                o.customer_email,
+                o.amount,
+                o.status,
+                o.created_at,
+                s.platform AS marketplace
+            FROM orders o
+            LEFT JOIN stores s ON o.storeid = s.storeid
+            WHERE o.userid=$1
+            ORDER BY o.created_at DESC
+            LIMIT $2
+        """
+        return await db.fetch_all(query, userid, limit, conn=conn)
 
     @staticmethod
     async def get_recent_orders(userid: UUID, conn: Optional[asyncpg.Connection] = None):

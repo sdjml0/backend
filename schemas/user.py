@@ -14,6 +14,13 @@ class UserSignup(BaseModel):
     country: Optional[str] = "United States"
 
 
+class SignupResponse(BaseModel):
+    message: str
+    userid: UUID
+    email: EmailStr
+
+
+
 class UserLogin(BaseModel):
     email: EmailStr
     password: str

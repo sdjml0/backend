@@ -20,11 +20,12 @@ class Database:
         try:
             self.pool = await asyncpg.create_pool(
                 dsn=settings.DATABASE_URL,
-                min_size=0,
-                max_size=10,
-                timeout=30.0,
-                command_timeout=60.0,
+                min_size=2,
+                max_size=20,
+                timeout=15.0,
+                command_timeout=30.0,
                 max_inactive_connection_lifetime=300.0,
+                statement_cache_size=100,
             )
             logger.info("✅ PostgreSQL connected.")
             print("✅ PostgreSQL Connected")

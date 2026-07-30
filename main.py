@@ -35,12 +35,29 @@ async def lifespan(app: FastAPI):
         pass
 
 
+from fastapi.responses import Response
+
 app = FastAPI(
     title="E-Commerce API",
     version="1.0.0",
     lifespan=lifespan,
 )
 
+
+from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.responses import Response
+
+# Compression & Security Configuration
+app.add_middleware(GZipMiddleware, minimum_size=500)
+
+@app.middleware("http")
+async def add_security_headers(request, call_next):
+    response: Response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    return response
 
 # CORS Configuration
 origins = [

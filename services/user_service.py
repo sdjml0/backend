@@ -43,7 +43,8 @@ class UserService:
 
         return {
             "message": "User registered successfully.",
-            "userid": str(userid)
+            "userid": str(userid),
+            "email": user.email
         }
 
 
@@ -70,11 +71,15 @@ class UserService:
                 detail="Invalid password."
             )
 
+        user_dict = dict(user)
 
         access_token = create_access_token(
             {
                 "sub": str(user["userid"]),
-                "name": user["name"]
+                "name": user["name"],
+                "email": user["email"],
+                "phone": user_dict.get("phone"),
+                "role": user_dict.get("role", "Owner")
             }
         )
 
@@ -87,7 +92,7 @@ class UserService:
                 "id": user["userid"],
                 "name": user["name"],
                 "email": user["email"],
-                "role": dict(user).get("role", "Owner")
+                "role": user_dict.get("role", "Owner")
             }
         )
 
