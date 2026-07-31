@@ -7,6 +7,7 @@ class UserSignup(BaseModel):
     name: str = Field(..., min_length=2, max_length=100)
     email: EmailStr
     password: str = Field(..., min_length=6)
+    otp: str = Field(..., min_length=6, max_length=6, description="6-digit OTP received via email")
     phone: Optional[str] = "1234567890"
     address: Optional[str] = "Main St"
     city: Optional[str] = "New York"

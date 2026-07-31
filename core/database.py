@@ -30,6 +30,8 @@ class Database:
             logger.info("✅ PostgreSQL connected.")
             print("✅ PostgreSQL Connected")
 
+            await self._init_tables()
+
             if self._keep_alive_task is None or self._keep_alive_task.done():
                 self._keep_alive_task = asyncio.create_task(self._keep_alive_loop())
         except Exception as e:
@@ -49,6 +51,25 @@ class Database:
                         await conn.fetchval("SELECT 1;")
             except Exception:
                 pass
+
+    async def _init_tables(self):
+        """Creates necessary tables like otps if they do not exist."""
+        query = """
+        CREATE TABLE IF NOT EXISTS otps (
+            otpid UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            email VARCHAR(255) NOT NULL,
+            otp_code VARCHAR(6) NOT NULL,
+            purpose VARCHAR(50) NOT NULL DEFAULT 'signup',
+            is_verified BOOLEAN DEFAULT FALSE,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+            expires_at TIMESTAMP WITH TIME ZONE NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_otps_email_purpose ON otps(email, purpose);
+        """
+        try:
+            await self.execute(query)
+        except Exception as e:
+            logger.warning(f"⚠️ Could not auto-create otps table: {e}")
 
     async def disconnect(self):
         if self._keep_alive_task:

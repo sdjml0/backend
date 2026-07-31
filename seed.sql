@@ -167,4 +167,17 @@ CREATE INDEX IF NOT EXISTS idx_orders_userid_storeid ON orders(userid, storeid);
 CREATE INDEX IF NOT EXISTS idx_orders_userid_created_at ON orders(userid, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_products_userid_units_sold ON products(userid, units_sold DESC);
 
+-- OTP Verification Table
+CREATE TABLE IF NOT EXISTS otps (
+    otpid UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    email VARCHAR(255) NOT NULL,
+    otp_code VARCHAR(6) NOT NULL,
+    purpose VARCHAR(50) NOT NULL DEFAULT 'signup',
+    is_verified BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    expires_at TIMESTAMP WITH TIME ZONE NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_otps_email_purpose ON otps(email, purpose);
+
 

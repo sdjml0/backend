@@ -8,6 +8,18 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
 
+    # OTP Configuration
+    OTP_EXPIRE_MINUTES: int = 10
+
+    # SMTP / Email Configuration
+    SMTP_HOST: str = "smtp.gmail.com"
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
+    PASSWORD_GMAIL_SMTP: str = ""
+    EMAILS_FROM_EMAIL: str = "noreply@ecommerce.com"
+    EMAILS_FROM_NAME: str = "E-Commerce Verification"
+
     model_config = SettingsConfigDict(
         env_file=".env",
         extra="ignore"
