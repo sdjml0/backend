@@ -60,10 +60,12 @@ class Database:
             email VARCHAR(255) NOT NULL,
             otp_code VARCHAR(6) NOT NULL,
             purpose VARCHAR(50) NOT NULL DEFAULT 'signup',
+            payload JSONB DEFAULT NULL,
             is_verified BOOLEAN DEFAULT FALSE,
             created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
             expires_at TIMESTAMP WITH TIME ZONE NOT NULL
         );
+        ALTER TABLE otps ADD COLUMN IF NOT EXISTS payload JSONB DEFAULT NULL;
         CREATE INDEX IF NOT EXISTS idx_otps_email_purpose ON otps(email, purpose);
         """
         try:

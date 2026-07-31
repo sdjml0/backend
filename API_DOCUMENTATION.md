@@ -75,9 +75,42 @@ Generates a 6-digit OTP code and dispatches it via email to the client.
 
 ---
 
-### 3.2 Verify OTP (Standalone Pre-Verification)
+### 3.2 Step 1: Submit Registration Details & Request OTP
 
-Optional endpoint to validate that a 6-digit OTP code is valid and active before submitting user forms.
+Accepts registration form details (`name`, `email`, `password`, `phone`, `address`, etc.), stores pending signup data, and dispatches a 6-digit OTP to the client email.
+
+- **URL**: `POST /auth/signup`
+- **Headers**: `Content-Type: application/json`
+
+#### Request Payload:
+```json
+{
+  "name": "Jane Doe",
+  "email": "user@example.com",
+  "password": "SecretPassword123",
+  "phone": "1234567890",
+  "address": "123 Main Street",
+  "city": "New York",
+  "postalcode": "10001",
+  "country": "United States"
+}
+```
+
+#### Response (`200 OK`):
+```json
+{
+  "success": true,
+  "message": "Registration details received. 6-digit OTP code sent to user@example.com. Please verify OTP to complete account creation.",
+  "email": "user@example.com",
+  "expires_in_minutes": 10
+}
+```
+
+---
+
+### 3.3 Step 2: Authenticate OTP & Complete Registration
+
+Verifies the 6-digit OTP code, creates the user account in PostgreSQL database, and issues a JWT `accessToken` for immediate dashboard authentication.
 
 - **URL**: `POST /auth/verify-otp`
 - **Headers**: `Content-Type: application/json`
@@ -92,46 +125,6 @@ Optional endpoint to validate that a 6-digit OTP code is valid and active before
 ```
 
 #### Response (`200 OK`):
-```json
-{
-  "success": true,
-  "message": "OTP validated successfully.",
-  "otpid": "d3d8039a-6d96-4e06-9a1e-234b47929d57"
-}
-```
-
-#### Error Response (`400 Bad Request`):
-```json
-{
-  "detail": "Invalid or expired 6-digit OTP code. Please request a new OTP."
-}
-```
-
----
-
-### 3.3 User Sign Up (with Mandatory OTP)
-
-Verifies the 6-digit OTP code, creates user credentials in PostgreSQL, and generates a JWT `accessToken` for immediate authentication.
-
-- **URL**: `POST /auth/signup`
-- **Headers**: `Content-Type: application/json`
-
-#### Request Payload:
-```json
-{
-  "name": "Jane Doe",
-  "email": "user@example.com",
-  "password": "SecretPassword123",
-  "otp": "123456",
-  "phone": "1234567890",
-  "address": "123 Main Street",
-  "city": "New York",
-  "postalcode": "10001",
-  "country": "United States"
-}
-```
-
-#### Response (`201 Created`):
 ```json
 {
   "message": "User registered successfully.",

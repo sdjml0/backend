@@ -70,7 +70,12 @@ class OTPService:
     async def verify_otp(email: str, otp_code: str, purpose: str = "signup"):
         """
         Verifies that a 6-digit OTP code is valid and active (within 10 minutes).
+        For 'signup' purpose with pending user payload, creates the user and returns JWT accessToken for immediate login.
         """
+        import json
+        from core.security import create_access_token
+        from schemas.user import UserSignup
+
         otp_row = await OTPRepository.get_valid_otp(email, otp_code, purpose)
 
         if not otp_row:
@@ -79,11 +84,73 @@ class OTPService:
                 detail="Invalid or expired 6-digit OTP code. Please request a new OTP."
             )
 
-        # Mark OTP verified in DB
-        await OTPRepository.mark_verified(otp_row["otpid"])
+        otpid = otp_row["otpid"]
+        payload_data = otp_row["payload"] if "payload" in otp_row and otp_row["payload"] else None
+
+        if isinstance(payload_data, str):
+            try:
+                payload_data = json.loads(payload_data)
+            except Exception:
+                pass
+
+        # If this is a signup OTP with stored pending user payload, finalize user creation & return JWT token
+        if purpose == "signup" and payload_data and isinstance(payload_data, dict):
+            user_email = payload_data.get("email", email)
+            exists = await UserRepository.user_exists(user_email)
+            if exists:
+                await OTPRepository.delete_otp(otpid)
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="User with this email already exists."
+                )
+
+            signup_user = UserSignup(
+                name=payload_data.get("name", "User"),
+                email=user_email,
+                password="dummy_password",
+                phone=payload_data.get("phone"),
+                address=payload_data.get("address"),
+                city=payload_data.get("city"),
+                postalcode=payload_data.get("postalcode"),
+                country=payload_data.get("country")
+            )
+
+            hashed_pwd = payload_data.get("password")
+            userid = await UserRepository.create_user(user=signup_user, hashed_password=hashed_pwd)
+
+            # Clean up consumed OTP
+            await OTPRepository.delete_otp(otpid)
+
+            # Generate access token for immediate authentication to dashboard
+            access_token = create_access_token(
+                {
+                    "sub": str(userid),
+                    "name": signup_user.name,
+                    "email": signup_user.email,
+                    "phone": signup_user.phone,
+                    "role": "Owner"
+                }
+            )
+
+            return {
+                "message": "User registered successfully.",
+                "userid": str(userid),
+                "email": signup_user.email,
+                "accessToken": access_token,
+                "expiresIn": 3600,
+                "user": {
+                    "id": str(userid),
+                    "name": signup_user.name,
+                    "email": signup_user.email,
+                    "role": "Owner"
+                }
+            }
+
+        # Otherwise mark OTP verified in DB
+        await OTPRepository.mark_verified(otpid)
 
         return {
             "success": True,
             "message": "OTP validated successfully.",
-            "otpid": otp_row["otpid"]
+            "otpid": otpid
         }

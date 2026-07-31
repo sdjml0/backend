@@ -24,14 +24,7 @@ class UserService:
 
     @staticmethod
     async def signup(user: UserSignup):
-        # 1. Verify OTP first (must be valid, active within 10 minutes)
-        otp_res = await OTPService.verify_otp(
-            email=user.email,
-            otp_code=user.otp,
-            purpose="signup"
-        )
-
-        # 2. Check if user already exists
+        # 1. Check if user already exists
         exists = await UserRepository.user_exists(user.email)
         if exists:
             raise HTTPException(
@@ -39,42 +32,88 @@ class UserService:
                 detail="User with this email already exists."
             )
 
-        # 3. Hash password
+        # 2. Hash password
         hashed_password = hash_password(user.password)
 
-        # 4. Save user in DB
-        userid = await UserRepository.create_user(
-            user=user,
-            hashed_password=hashed_password
+        # 3. If OTP code was provided in payload, process immediate signup
+        if user.otp:
+            otp_res = await OTPService.verify_otp(
+                email=user.email,
+                otp_code=user.otp,
+                purpose="signup"
+            )
+            # If verify_otp already created user and returned token dictionary, return it directly
+            if isinstance(otp_res, dict) and "accessToken" in otp_res:
+                return otp_res
+
+            userid = await UserRepository.create_user(
+                user=user,
+                hashed_password=hashed_password
+            )
+            if "otpid" in otp_res:
+                await OTPRepository.delete_otp(otp_res["otpid"])
+
+            access_token = create_access_token(
+                {
+                    "sub": str(userid),
+                    "name": user.name,
+                    "email": user.email,
+                    "phone": user.phone,
+                    "role": "Owner"
+                }
+            )
+
+            return {
+                "message": "User registered successfully.",
+                "userid": str(userid),
+                "email": user.email,
+                "accessToken": access_token,
+                "expiresIn": 3600,
+                "user": {
+                    "id": str(userid),
+                    "name": user.name,
+                    "email": user.email,
+                    "role": "Owner"
+                }
+            }
+
+        # 4. Standard 2-Step Signup Workflow:
+        # Generate 6-digit OTP code & save pending registration payload in otps DB table
+        otp_code = OTPService._generate_6_digit_otp()
+        payload = {
+            "name": user.name,
+            "email": user.email,
+            "password": hashed_password,
+            "phone": user.phone,
+            "address": user.address,
+            "city": user.city,
+            "postalcode": user.postalcode,
+            "country": user.country,
+        }
+
+        await OTPRepository.save_otp(
+            email=user.email,
+            otp_code=otp_code,
+            purpose="signup",
+            expires_in_minutes=settings.OTP_EXPIRE_MINUTES,
+            payload=payload
         )
 
-        # 5. Clean up consumed OTP
-        if "otpid" in otp_res:
-            await OTPRepository.delete_otp(otp_res["otpid"])
-
-        # 6. Generate access token so client can immediately authenticate
-        access_token = create_access_token(
-            {
-                "sub": str(userid),
-                "name": user.name,
-                "email": user.email,
-                "phone": user.phone,
-                "role": "Owner"
-            }
+        # Dispatch OTP via email service in non-blocking worker thread
+        import asyncio
+        from services.email_service import EmailService
+        await asyncio.to_thread(
+            EmailService.send_otp_email,
+            recipient_email=user.email,
+            otp_code=otp_code,
+            purpose="signup"
         )
 
         return {
-            "message": "User registered successfully.",
-            "userid": str(userid),
+            "success": True,
+            "message": f"Registration details received. 6-digit OTP code sent to {user.email}. Please verify OTP to complete account creation.",
             "email": user.email,
-            "accessToken": access_token,
-            "expiresIn": 3600,
-            "user": {
-                "id": str(userid),
-                "name": user.name,
-                "email": user.email,
-                "role": "Owner"
-            }
+            "expires_in_minutes": settings.OTP_EXPIRE_MINUTES
         }
 
     @staticmethod
