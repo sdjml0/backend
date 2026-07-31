@@ -3,6 +3,8 @@ import logging
 import socket
 import smtplib
 import urllib.request
+import urllib.error
+
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
@@ -105,8 +107,17 @@ class EmailService:
                         logger.info(f"📧 OTP Email successfully dispatched to {recipient_email} via Resend HTTPS API")
                         print(f"📧 OTP Email successfully dispatched to {recipient_email} via Resend HTTPS API")
                         return True
+            except urllib.error.HTTPError as http_err:
+                err_body = ""
+                try:
+                    err_body = http_err.read().decode("utf-8")
+                except Exception:
+                    err_body = str(http_err)
+                logger.warning(f"⚠️ Resend HTTP API dispatch failed (HTTP {http_err.code}): {err_body}. Attempting SMTP fallback...")
+                print(f"⚠️ Resend HTTP API error ({http_err.code}): {err_body}")
             except Exception as resend_err:
                 logger.warning(f"⚠️ Resend HTTP API dispatch failed ({resend_err}). Attempting SMTP fallback...")
+
 
         # Strategy 2: Determine SMTP configuration fallback
         smtp_user = settings.USERNAME_GMAIL_SMTP or settings.SMTP_USER or settings.EMAILS_FROM_EMAIL
