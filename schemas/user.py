@@ -1,3 +1,4 @@
+from __future__ import annotations
 from typing import Optional
 from uuid import UUID
 from pydantic import BaseModel, Field, EmailStr, ConfigDict
@@ -14,6 +15,13 @@ class UserSignup(BaseModel):
     country: Optional[str] = "United States"
 
 
+class AuthUser(BaseModel):
+    id: UUID
+    name: str
+    email: EmailStr
+    role: Optional[str] = "Owner"
+
+
 class SignupResponse(BaseModel):
     message: str
     userid: Optional[UUID] = None
@@ -23,7 +31,6 @@ class SignupResponse(BaseModel):
     accessToken: Optional[str] = None
     expiresIn: Optional[int] = None
     user: Optional[AuthUser] = None
-
 
 
 class UserLogin(BaseModel):
@@ -42,13 +49,6 @@ class UserResponse(BaseModel):
     country: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
-
-
-class AuthUser(BaseModel):
-    id: UUID
-    name: str
-    email: EmailStr
-    role: Optional[str] = "Owner"
 
 
 class LoginResponse(BaseModel):
