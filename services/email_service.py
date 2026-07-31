@@ -40,27 +40,49 @@ class EmailService:
         smtp_user = settings.USERNAME_GMAIL_SMTP or settings.SMTP_USER or settings.EMAILS_FROM_EMAIL
         smtp_password = settings.PASSWORD_GMAIL_SMTP or settings.SMTP_PASSWORD
 
-        if smtp_user and smtp_user != "noreply@ecommerce.com" and smtp_password:
-            try:
-                msg = MIMEMultipart("alternative")
-                msg["Subject"] = subject
-                msg["From"] = f"{settings.EMAILS_FROM_NAME} <{smtp_user}>"
-                msg["To"] = recipient_email
-                msg.attach(MIMEText(html_content, "html"))
+        if not smtp_user or smtp_user == "noreply@ecommerce.com" or not smtp_password:
+            logger.warning(
+                "⚠️ SMTP Credentials missing on server! Please configure USERNAME_GMAIL_SMTP and PASSWORD_GMAIL_SMTP environment variables in Render Dashboard."
+            )
+            print(f"🔑 [DEV / FALLBACK OTP] Email: {recipient_email} | Purpose: {purpose} | OTP: {otp_code}")
+            return True
 
-                with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=10) as server:
-                    server.starttls()
-                    server.login(smtp_user, smtp_password)
-                    server.sendmail(smtp_user, recipient_email, msg.as_string())
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = subject
+        msg["From"] = f"{settings.EMAILS_FROM_NAME} <{smtp_user}>"
+        msg["To"] = recipient_email
+        msg.attach(MIMEText(html_content, "html"))
 
-                logger.info(f"📧 OTP Email successfully dispatched to {recipient_email}")
-                print(f"📧 OTP Email successfully dispatched to {recipient_email}")
-                return True
-            except Exception as e:
-                logger.warning(f"⚠️ SMTP send failed ({e}). Falling back to log display.")
-                print(f"⚠️ SMTP dispatch failed for {recipient_email}: {e}")
+        # Strategy 1: Try standard SMTP with STARTTLS (Port 587 / configured port)
+        try:
+            with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=12) as server:
+                server.ehlo()
+                server.starttls()
+                server.ehlo()
+                server.login(smtp_user, smtp_password)
+                server.sendmail(smtp_user, recipient_email, msg.as_string())
 
-        # Fallback log output for development / unconfigured SMTP
-        logger.info(f"🔑 [DEV MODE OTP] Email: {recipient_email} | Purpose: {purpose} | OTP: {otp_code}")
-        print(f"🔑 [DEV MODE OTP] Email: {recipient_email} | Purpose: {purpose} | OTP: {otp_code}")
+            logger.info(f"📧 OTP Email successfully dispatched to {recipient_email} via TLS ({settings.SMTP_PORT})")
+            print(f"📧 OTP Email successfully dispatched to {recipient_email}")
+            return True
+        except Exception as err_tls:
+            logger.warning(f"⚠️ SMTP TLS ({settings.SMTP_PORT}) failed on server: {err_tls}. Attempting SSL (Port 465) fallback...")
+
+        # Strategy 2: Fallback to SMTP_SSL (Port 465) commonly required by Gmail on cloud servers like Render
+        try:
+            with smtplib.SMTP_SSL(settings.SMTP_HOST, 465, timeout=12) as server:
+                server.login(smtp_user, smtp_password)
+                server.sendmail(smtp_user, recipient_email, msg.as_string())
+
+            logger.info(f"📧 OTP Email successfully dispatched to {recipient_email} via SSL (465)")
+            print(f"📧 OTP Email successfully dispatched to {recipient_email} via SSL fallback")
+            return True
+        except Exception as err_ssl:
+            logger.error(f"❌ All SMTP dispatch attempts failed on server for {recipient_email}. TLS Error: {err_tls} | SSL Error: {err_ssl}")
+            print(f"❌ SMTP failed for {recipient_email}. TLS: {err_tls} | SSL: {err_ssl}")
+
+        # Fallback log output if SMTP network connection is blocked by cloud provider
+        logger.info(f"🔑 [FALLBACK LOG OTP] Email: {recipient_email} | Purpose: {purpose} | OTP: {otp_code}")
+        print(f"🔑 [FALLBACK LOG OTP] Email: {recipient_email} | Purpose: {purpose} | OTP: {otp_code}")
         return True
+

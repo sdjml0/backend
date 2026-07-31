@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import secrets
 from fastapi import HTTPException, status
@@ -50,12 +51,14 @@ class OTPService:
             expires_in_minutes=settings.OTP_EXPIRE_MINUTES
         )
 
-        # Dispatch OTP via email service
-        EmailService.send_otp_email(
+        # Dispatch OTP via email service in non-blocking worker thread
+        await asyncio.to_thread(
+            EmailService.send_otp_email,
             recipient_email=email,
             otp_code=otp_code,
             purpose=purpose
         )
+
 
         return {
             "success": True,
