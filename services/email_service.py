@@ -81,7 +81,54 @@ class EmailService:
         </html>
         """
 
-        # Strategy 1: Primary Delivery via Resend HTTPS REST API (Port 443 - Never Blocked on Render)
+        # Strategy 1: Primary Delivery via Brevo HTTPS REST API (Port 443 - No Custom Domain Required)
+        if settings.BREVO_API_KEY:
+            try:
+                sender_email = settings.BREVO_SENDER_EMAIL or settings.USERNAME_GMAIL_SMTP or "noreply@ecommerce.com"
+                payload = json.dumps({
+                    "sender": {
+                        "name": settings.EMAILS_FROM_NAME,
+                        "email": sender_email
+                    },
+                    "to": [
+                        {
+                            "email": recipient_email
+                        }
+                    ],
+                    "subject": subject,
+                    "htmlContent": html_content
+                }).encode("utf-8")
+
+                req = urllib.request.Request(
+                    "https://api.brevo.com/v3/smtp/email",
+                    data=payload,
+                    headers={
+                        "api-key": settings.BREVO_API_KEY,
+                        "Content-Type": "application/json",
+                        "Accept": "application/json",
+                        "User-Agent": "FastAPI-ECommerce/1.0"
+                    },
+                    method="POST"
+                )
+
+                with urllib.request.urlopen(req, timeout=10) as resp:
+                    if resp.status in (200, 201, 202):
+                        logger.info(f"📧 OTP Email successfully dispatched to {recipient_email} via Brevo HTTPS API")
+                        print(f"📧 OTP Email successfully dispatched to {recipient_email} via Brevo HTTPS API")
+                        return True
+            except urllib.error.HTTPError as http_err:
+                err_body = ""
+                try:
+                    err_body = http_err.read().decode("utf-8")
+                except Exception:
+                    err_body = str(http_err)
+                logger.warning(f"⚠️ Brevo HTTP API dispatch failed (HTTP {http_err.code}): {err_body}")
+                print(f"⚠️ Brevo HTTP API error ({http_err.code}): {err_body}")
+            except Exception as brevo_err:
+                logger.warning(f"⚠️ Brevo HTTP API dispatch failed ({brevo_err})")
+
+        # Strategy 2: Resend HTTPS REST API (Port 443)
+
         if settings.RESEND_API_KEY:
             try:
                 payload = json.dumps({

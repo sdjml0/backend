@@ -11,7 +11,9 @@ class Settings(BaseSettings):
     # OTP Configuration
     OTP_EXPIRE_MINUTES: int = 10
 
-    # SMTP / Email Configuration
+    # Email API Provider Configurations
+    BREVO_API_KEY: str = ""
+    BREVO_SENDER_EMAIL: str = ""
     RESEND_API_KEY: str = ""
     RESEND_FROM_EMAIL: str = "onboarding@resend.dev"
     SMTP_HOST: str = "smtp.gmail.com"
