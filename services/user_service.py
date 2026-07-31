@@ -36,49 +36,7 @@ class UserService:
         # 2. Hash password
         hashed_password = hash_password(user.password)
 
-        # 3. If OTP code was provided in payload, process immediate signup
-        if user.otp:
-            otp_res = await OTPService.verify_otp(
-                email=user.email,
-                otp_code=user.otp,
-                purpose="signup"
-            )
-            # If verify_otp already created user and returned token dictionary, return it directly
-            if isinstance(otp_res, dict) and "accessToken" in otp_res:
-                return otp_res
-
-            userid = await UserRepository.create_user(
-                user=user,
-                hashed_password=hashed_password
-            )
-            if "otpid" in otp_res:
-                await OTPRepository.delete_otp(otp_res["otpid"])
-
-            access_token = create_access_token(
-                {
-                    "sub": str(userid),
-                    "name": user.name,
-                    "email": user.email,
-                    "phone": user.phone,
-                    "role": "Owner"
-                }
-            )
-
-            return {
-                "message": "User registered successfully.",
-                "userid": str(userid),
-                "email": user.email,
-                "accessToken": access_token,
-                "expiresIn": 3600,
-                "user": {
-                    "id": str(userid),
-                    "name": user.name,
-                    "email": user.email,
-                    "role": "Owner"
-                }
-            }
-
-        # 4. Standard 2-Step Signup Workflow:
+        # 3. Standard 2-Step Signup Workflow:
         # Generate 6-digit OTP code & save pending registration payload in otps DB table
         otp_code = OTPService._generate_6_digit_otp()
         payload = {
