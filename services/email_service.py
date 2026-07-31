@@ -13,6 +13,13 @@ from core.config import settings
 logger = logging.getLogger(__name__)
 
 
+def _safe_print(msg: str):
+    try:
+        print(msg)
+    except UnicodeEncodeError:
+        print(msg.encode('ascii', errors='replace').decode('ascii'))
+
+
 def _create_ipv4_socket(address, timeout=12, source_address=None):
     """
     Creates an IPv4-only socket connection.
@@ -59,27 +66,167 @@ class EmailService:
     @staticmethod
     def send_otp_email(recipient_email: str, otp_code: str, purpose: str = "signup") -> bool:
         """
-        Sends a 6-digit OTP verification code via Resend HTTPS API (Port 443) or SMTP fallback.
+        Sends an email verification (OTP code or password reset link) via Brevo, Resend HTTPS API, or SMTP fallback.
         """
-        subject = f"Your Verification OTP Code: {otp_code}"
-        purpose_label = "Email Verification (Sign Up)" if purpose == "signup" else "Password Reset Request"
+        is_password_reset = (
+            "reset" in purpose.lower() or 
+            purpose.lower().strip() in ["password_reset", "password reset request", "password reset", "password-reset"]
+        )
 
-        html_content = f"""
-        <html>
-            <body style="font-family: Arial, sans-serif; color: #333; line-height: 1.6; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
-                <h2 style="color: #2563eb; text-align: center;">E-Commerce Security</h2>
-                <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
-                <p>Hello,</p>
-                <p>You requested a 6-digit OTP for <strong>{purpose_label}</strong>.</p>
-                <div style="background-color: #f3f4f6; padding: 15px; border-radius: 8px; text-align: center; margin: 25px 0;">
-                    <span style="font-size: 32px; font-weight: bold; letter-spacing: 6px; color: #1e40af;">{otp_code}</span>
-                </div>
-                <p>This code is valid for <strong>{settings.OTP_EXPIRE_MINUTES} minutes</strong>. If you did not request this, please ignore this email.</p>
-                <br/>
-                <p style="font-size: 12px; color: #6b7280; text-align: center;">This is an automated security message. Please do not reply.</p>
-            </body>
-        </html>
-        """
+        frontend_base = getattr(settings, "FRONTEND_URL", "https://frontend-ui-new-liart.vercel.app").rstrip("/")
+        reset_link = f"{frontend_base}/forgot-password?resetotp={otp_code}"
+
+        if is_password_reset:
+            subject = "Password Reset Request - E-Commerce Security"
+            html_content = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Password Reset Request</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f4f6f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #333333; -webkit-font-smoothing: antialiased;">
+    <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #f4f6f9; padding: 40px 10px;">
+        <tr>
+            <td align="center">
+                <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 580px; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.06); border: 1px solid #e2e8f0;">
+                    <!-- Header -->
+                    <tr>
+                        <td style="background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%); padding: 32px 40px; text-align: center;">
+                            <h1 style="color: #ffffff; font-size: 22px; font-weight: 700; margin: 0; letter-spacing: 0.5px; text-transform: uppercase;">
+                                E-Commerce Security
+                            </h1>
+                        </td>
+                    </tr>
+                    
+                    <!-- Content -->
+                    <tr>
+                        <td style="padding: 40px 40px 32px 40px;">
+                            <h2 style="color: #0f172a; font-size: 20px; font-weight: 600; margin: 0 0 16px 0;">
+                                Password Reset Request
+                            </h2>
+                            <p style="font-size: 15px; line-height: 1.6; color: #475569; margin: 0 0 20px 0;">
+                                Hello,
+                            </p>
+                            <p style="font-size: 15px; line-height: 1.6; color: #475569; margin: 0 0 28px 0;">
+                                We received a request to reset the password for your account registered with <strong style="color: #0f172a;">{recipient_email}</strong>. Click the button below to set a new password:
+                            </p>
+                            
+                            <!-- Action Button -->
+                            <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="margin: 32px 0;">
+                                <tr>
+                                    <td align="center">
+                                        <a href="{reset_link}" target="_blank" style="background-color: #2563eb; color: #ffffff; display: inline-block; padding: 14px 32px; font-size: 15px; font-weight: 600; text-decoration: none; border-radius: 8px; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);">
+                                            Reset Password
+                                        </a>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <!-- Fallback Link Box -->
+                            <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin: 28px 0 24px 0;">
+                                <p style="margin: 0 0 6px 0; font-size: 12px; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
+                                    Button not working? Copy & paste this link into your browser:
+                                </p>
+                                <p style="margin: 0; font-size: 13px; word-break: break-all;">
+                                    <a href="{reset_link}" style="color: #2563eb; text-decoration: underline;">{reset_link}</a>
+                                </p>
+                            </div>
+                            
+                            <!-- Security Alert Note -->
+                            <div style="border-left: 4px solid #f59e0b; background-color: #fffbe6; padding: 14px 16px; border-radius: 0 6px 6px 0; margin-bottom: 24px;">
+                                <p style="margin: 0; font-size: 13px; line-height: 1.5; color: #92400e;">
+                                    🔒 This reset link is valid for <strong>{settings.OTP_EXPIRE_MINUTES} minutes</strong>. If you did not request a password reset, you can safely ignore this email; your account remains secure.
+                                </p>
+                            </div>
+                        </td>
+                    </tr>
+                    
+                    <!-- Footer -->
+                    <tr>
+                        <td style="background-color: #f8fafc; padding: 24px 40px; border-top: 1px solid #e2e8f0; text-align: center;">
+                            <p style="font-size: 12px; color: #94a3b8; margin: 0 0 8px 0;">
+                                © E-Commerce Security Team • All rights reserved
+                            </p>
+                            <p style="font-size: 11px; color: #cbd5e1; margin: 0;">
+                                This is an automated security transmission. Please do not reply to this message.
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>"""
+        else:
+            purpose_label = "Email Verification (Sign Up)" if purpose == "signup" else purpose.replace("_", " ").title()
+            subject = f"Your Verification OTP Code: {otp_code}"
+            html_content = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verification Code</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f4f6f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #333333; -webkit-font-smoothing: antialiased;">
+    <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #f4f6f9; padding: 40px 10px;">
+        <tr>
+            <td align="center">
+                <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 580px; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.06); border: 1px solid #e2e8f0;">
+                    <!-- Header -->
+                    <tr>
+                        <td style="background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%); padding: 32px 40px; text-align: center;">
+                            <h1 style="color: #ffffff; font-size: 22px; font-weight: 700; margin: 0; letter-spacing: 0.5px; text-transform: uppercase;">
+                                E-Commerce Security
+                            </h1>
+                        </td>
+                    </tr>
+                    
+                    <!-- Content -->
+                    <tr>
+                        <td style="padding: 40px 40px 32px 40px;">
+                            <h2 style="color: #0f172a; font-size: 20px; font-weight: 600; margin: 0 0 16px 0;">
+                                Account Verification Code
+                            </h2>
+                            <p style="font-size: 15px; line-height: 1.6; color: #475569; margin: 0 0 20px 0;">
+                                Hello,
+                            </p>
+                            <p style="font-size: 15px; line-height: 1.6; color: #475569; margin: 0 0 24px 0;">
+                                You requested a 6-digit verification code for <strong>{purpose_label}</strong>. Please enter the code below:
+                            </p>
+                            
+                            <!-- OTP Display Box -->
+                            <div style="background-color: #f1f5f9; border: 1px dashed #cbd5e1; border-radius: 10px; padding: 20px; text-align: center; margin: 28px 0;">
+                                <span style="font-family: 'Courier New', Courier, monospace; font-size: 36px; font-weight: 700; letter-spacing: 10px; color: #1e40af;">{otp_code}</span>
+                            </div>
+
+                            <!-- Security Alert Note -->
+                            <div style="border-left: 4px solid #2563eb; background-color: #eff6ff; padding: 14px 16px; border-radius: 0 6px 6px 0; margin-bottom: 24px;">
+                                <p style="margin: 0; font-size: 13px; line-height: 1.5; color: #1e40af;">
+                                    🔒 This code is valid for <strong>{settings.OTP_EXPIRE_MINUTES} minutes</strong>. Do not share this code with anyone. If you did not request this, please ignore this email.
+                                </p>
+                            </div>
+                        </td>
+                    </tr>
+                    
+                    <!-- Footer -->
+                    <tr>
+                        <td style="background-color: #f8fafc; padding: 24px 40px; border-top: 1px solid #e2e8f0; text-align: center;">
+                            <p style="font-size: 12px; color: #94a3b8; margin: 0 0 8px 0;">
+                                © E-Commerce Security Team • All rights reserved
+                            </p>
+                            <p style="font-size: 11px; color: #cbd5e1; margin: 0;">
+                                This is an automated security transmission. Please do not reply to this message.
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>"""
 
         # Strategy 1: Primary Delivery via Brevo HTTPS REST API (Port 443 - No Custom Domain Required)
         if settings.BREVO_API_KEY:
@@ -114,8 +261,8 @@ class EmailService:
 
                 with urllib.request.urlopen(req, timeout=10) as resp:
                     if resp.status in (200, 201, 202):
-                        logger.info(f"📧 OTP Email successfully dispatched to {recipient_email} via Brevo HTTPS API")
-                        print(f"📧 OTP Email successfully dispatched to {recipient_email} via Brevo HTTPS API")
+                        logger.info(f"📧 Email successfully dispatched to {recipient_email} via Brevo HTTPS API")
+                        _safe_print(f"📧 Email successfully dispatched to {recipient_email} via Brevo HTTPS API")
                         return True
             except urllib.error.HTTPError as http_err:
                 err_body = ""
@@ -124,12 +271,11 @@ class EmailService:
                 except Exception:
                     err_body = str(http_err)
                 logger.warning(f"⚠️ Brevo HTTP API dispatch failed (HTTP {http_err.code}): {err_body}")
-                print(f"⚠️ Brevo HTTP API error ({http_err.code}): {err_body}")
+                _safe_print(f"⚠️ Brevo HTTP API error ({http_err.code}): {err_body}")
             except Exception as brevo_err:
                 logger.warning(f"⚠️ Brevo HTTP API dispatch failed ({brevo_err})")
 
         # Strategy 2: Resend HTTPS REST API (Port 443)
-
         if settings.RESEND_API_KEY:
             try:
                 payload = json.dumps({
@@ -152,8 +298,8 @@ class EmailService:
 
                 with urllib.request.urlopen(req, timeout=10) as resp:
                     if resp.status in (200, 201):
-                        logger.info(f"📧 OTP Email successfully dispatched to {recipient_email} via Resend HTTPS API")
-                        print(f"📧 OTP Email successfully dispatched to {recipient_email} via Resend HTTPS API")
+                        logger.info(f"📧 Email successfully dispatched to {recipient_email} via Resend HTTPS API")
+                        _safe_print(f"📧 Email successfully dispatched to {recipient_email} via Resend HTTPS API")
                         return True
             except urllib.error.HTTPError as http_err:
                 err_body = ""
@@ -162,12 +308,11 @@ class EmailService:
                 except Exception:
                     err_body = str(http_err)
                 logger.warning(f"⚠️ Resend HTTP API dispatch failed (HTTP {http_err.code}): {err_body}. Attempting SMTP fallback...")
-                print(f"⚠️ Resend HTTP API error ({http_err.code}): {err_body}")
+                _safe_print(f"⚠️ Resend HTTP API error ({http_err.code}): {err_body}")
             except Exception as resend_err:
                 logger.warning(f"⚠️ Resend HTTP API dispatch failed ({resend_err}). Attempting SMTP fallback...")
 
-
-        # Strategy 2: Determine SMTP configuration fallback
+        # Strategy 3: Determine SMTP configuration fallback
         smtp_user = settings.USERNAME_GMAIL_SMTP or settings.SMTP_USER or settings.EMAILS_FROM_EMAIL
         smtp_password = settings.PASSWORD_GMAIL_SMTP or settings.SMTP_PASSWORD
 
@@ -175,7 +320,10 @@ class EmailService:
             logger.warning(
                 "⚠️ Resend API Key or SMTP Credentials missing on server! Please configure RESEND_API_KEY or SMTP credentials in Render Dashboard."
             )
-            print(f"🔑 [DEV / FALLBACK OTP] Email: {recipient_email} | Purpose: {purpose} | OTP: {otp_code}")
+            if is_password_reset:
+                _safe_print(f"🔑 [DEV / FALLBACK LINK] Email: {recipient_email} | Purpose: {purpose} | Link: {reset_link}")
+            else:
+                _safe_print(f"🔑 [DEV / FALLBACK OTP] Email: {recipient_email} | Purpose: {purpose} | OTP: {otp_code}")
             return True
 
         msg = MIMEMultipart("alternative")
@@ -196,8 +344,8 @@ class EmailService:
                 server.login(smtp_user, smtp_password)
                 server.sendmail(smtp_user, recipient_email, msg.as_string())
 
-            logger.info(f"📧 OTP Email successfully dispatched to {recipient_email} via TLS ({settings.SMTP_PORT})")
-            print(f"📧 OTP Email successfully dispatched to {recipient_email}")
+            logger.info(f"📧 Email successfully dispatched to {recipient_email} via TLS ({settings.SMTP_PORT})")
+            _safe_print(f"📧 Email successfully dispatched to {recipient_email}")
             return True
         except Exception as e:
             tls_error = str(e)
@@ -209,15 +357,21 @@ class EmailService:
                 server.login(smtp_user, smtp_password)
                 server.sendmail(smtp_user, recipient_email, msg.as_string())
 
-            logger.info(f"📧 OTP Email successfully dispatched to {recipient_email} via SSL (465)")
-            print(f"📧 OTP Email successfully dispatched to {recipient_email} via SSL fallback")
+            logger.info(f"📧 Email successfully dispatched to {recipient_email} via SSL (465)")
+            _safe_print(f"📧 Email successfully dispatched to {recipient_email} via SSL fallback")
             return True
         except Exception as e:
             ssl_error = str(e)
             logger.error(f"❌ All SMTP dispatch attempts failed on server for {recipient_email}. TLS Error: {tls_error} | SSL Error: {ssl_error}")
-            print(f"❌ SMTP failed for {recipient_email}. TLS: {tls_error} | SSL: {ssl_error}")
+            _safe_print(f"❌ SMTP failed for {recipient_email}. TLS: {tls_error} | SSL: {ssl_error}")
 
         # Safe fallback log output if email network services are unreachable
-        logger.info(f"🔑 [FALLBACK LOG OTP] Email: {recipient_email} | Purpose: {purpose} | OTP: {otp_code}")
-        print(f"🔑 [FALLBACK LOG OTP] Email: {recipient_email} | Purpose: {purpose} | OTP: {otp_code}")
+        if is_password_reset:
+            logger.info(f"🔑 [FALLBACK LOG LINK] Email: {recipient_email} | Purpose: {purpose} | Link: {reset_link}")
+            _safe_print(f"🔑 [FALLBACK LOG LINK] Email: {recipient_email} | Purpose: {purpose} | Link: {reset_link}")
+        else:
+            logger.info(f"🔑 [FALLBACK LOG OTP] Email: {recipient_email} | Purpose: {purpose} | OTP: {otp_code}")
+            _safe_print(f"🔑 [FALLBACK LOG OTP] Email: {recipient_email} | Purpose: {purpose} | OTP: {otp_code}")
         return True
+
+

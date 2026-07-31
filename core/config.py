@@ -10,6 +10,7 @@ class Settings(BaseSettings):
 
     # OTP Configuration
     OTP_EXPIRE_MINUTES: int = 10
+    FRONTEND_URL: str = "https://frontend-ui-new-liart.vercel.app"
 
     # Email API Provider Configurations
     BREVO_API_KEY: str = ""
