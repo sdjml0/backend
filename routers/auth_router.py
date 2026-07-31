@@ -53,6 +53,7 @@ async def verify_otp(req: VerifyOTPRequest):
 @router.post(
     "/signup",
     response_model=SignupResponse,
+    response_model_exclude_none=True,
     status_code=status.HTTP_201_CREATED,
     summary="User Signup with mandatory OTP verification"
 )

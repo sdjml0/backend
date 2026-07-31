@@ -17,10 +17,12 @@ class UserSignup(BaseModel):
 
 class SignupResponse(BaseModel):
     message: str
-    userid: UUID
+    userid: Optional[UUID] = None
     email: EmailStr
+    success: Optional[bool] = None
+    expires_in_minutes: Optional[int] = None
     accessToken: Optional[str] = None
-    expiresIn: Optional[int] = 3600
+    expiresIn: Optional[int] = None
     user: Optional[AuthUser] = None
 
 
