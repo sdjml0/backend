@@ -48,8 +48,8 @@ _ORDERS_TIMESTAMP: Dict[str, float] = {}
 class DashboardService:
 
     @staticmethod
-    async def get_overview(userid: Optional[UUID] = None) -> Dict[str, Any]:
-        target_user = userid or DEMO_USER_ID
+    async def get_overview(userid: UUID) -> Dict[str, Any]:
+        target_user = userid
         cache_key = str(target_user)
 
         now = time.time()
@@ -310,8 +310,8 @@ class DashboardService:
         return res_dict
 
     @staticmethod
-    async def get_stores(userid: Optional[UUID] = None) -> List[Dict[str, Any]]:
-        target_user = userid or DEMO_USER_ID
+    async def get_stores(userid: UUID) -> List[Dict[str, Any]]:
+        target_user = userid
         cache_key = str(target_user)
 
         now = time.time()
@@ -356,38 +356,38 @@ class DashboardService:
         return stores
 
     @staticmethod
-    async def get_kpi_metrics(userid: Optional[UUID] = None) -> List[Dict[str, Any]]:
+    async def get_kpi_metrics(userid: UUID) -> List[Dict[str, Any]]:
         overview = await DashboardService.get_overview(userid)
         return overview.get("data", {}).get("kpiMetrics", [])
 
     @staticmethod
-    async def get_revenue_analytics(userid: Optional[UUID] = None) -> List[Dict[str, Any]]:
+    async def get_revenue_analytics(userid: UUID) -> List[Dict[str, Any]]:
         overview = await DashboardService.get_overview(userid)
         return overview.get("data", {}).get("revenueAnalytics", [])
 
     @staticmethod
-    async def get_marketplace_shares(userid: Optional[UUID] = None) -> List[Dict[str, Any]]:
+    async def get_marketplace_shares(userid: UUID) -> List[Dict[str, Any]]:
         overview = await DashboardService.get_overview(userid)
         return overview.get("data", {}).get("marketplaceShares", [])
 
     @staticmethod
-    async def get_recent_orders(userid: Optional[UUID] = None) -> List[Dict[str, Any]]:
+    async def get_recent_orders(userid: UUID) -> List[Dict[str, Any]]:
         overview = await DashboardService.get_overview(userid)
         return overview.get("data", {}).get("recentOrders", [])
 
     @staticmethod
-    async def get_top_products(userid: Optional[UUID] = None) -> List[Dict[str, Any]]:
+    async def get_top_products(userid: UUID) -> List[Dict[str, Any]]:
         overview = await DashboardService.get_overview(userid)
         return overview.get("data", {}).get("topProducts", [])
 
     @staticmethod
-    async def get_inventory_alerts(userid: Optional[UUID] = None) -> List[Dict[str, Any]]:
+    async def get_inventory_alerts(userid: UUID) -> List[Dict[str, Any]]:
         overview = await DashboardService.get_overview(userid)
         return overview.get("data", {}).get("inventoryAlerts", [])
 
     @staticmethod
-    async def get_user_inventory(userid: Optional[UUID] = None) -> List[Dict[str, Any]]:
-        target_user = userid or DEMO_USER_ID
+    async def get_user_inventory(userid: UUID) -> List[Dict[str, Any]]:
+        target_user = userid
         try:
             db_inventory = await DashboardRepository.get_inventory(target_user)
             if db_inventory:
@@ -411,8 +411,8 @@ class DashboardService:
 
 
     @staticmethod
-    async def get_user_products(userid: Optional[UUID] = None) -> List[Dict[str, Any]]:
-        target_user = userid or DEMO_USER_ID
+    async def get_user_products(userid: UUID) -> List[Dict[str, Any]]:
+        target_user = userid
         cache_key = str(target_user)
 
         now = time.time()
@@ -467,8 +467,8 @@ class DashboardService:
         return res
 
     @staticmethod
-    async def get_user_orders(userid: Optional[UUID] = None) -> List[Dict[str, Any]]:
-        target_user = userid or DEMO_USER_ID
+    async def get_user_orders(userid: UUID) -> List[Dict[str, Any]]:
+        target_user = userid
         cache_key = str(target_user)
 
         now = time.time()

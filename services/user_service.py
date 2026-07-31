@@ -99,14 +99,9 @@ class UserService:
 
 
     @staticmethod
-    async def get_profile(userid: Optional[UUID] = None):
+    async def get_profile(userid: UUID):
 
-        user = None
-        if userid:
-            user = await UserRepository.get_user_by_id(userid)
-
-        if user is None:
-            user = await UserRepository.get_first_user()
+        user = await UserRepository.get_user_by_id(userid)
 
         if user is None:
             raise HTTPException(

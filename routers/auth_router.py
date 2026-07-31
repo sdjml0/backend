@@ -1,4 +1,3 @@
-from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, status
@@ -12,9 +11,7 @@ from schemas.user import (
 )
 
 from services.user_service import UserService
-from core.dependencies import get_current_user_optional
-
-DEMO_USER_ID = UUID("5d09522b-a187-46bc-bf57-2c9b4407dddf")
+from core.dependencies import get_current_user
 
 router = APIRouter(
     prefix="/auth",
@@ -56,6 +53,6 @@ async def login_info():
     response_model=UserResponse
 )
 async def profile(
-    userid: Optional[UUID] = Depends(get_current_user_optional)
+    userid: UUID = Depends(get_current_user)
 ):
     return await UserService.get_profile(userid)
