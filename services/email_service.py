@@ -99,11 +99,12 @@ class EmailService:
                     "htmlContent": html_content
                 }).encode("utf-8")
 
+                brevo_key = settings.BREVO_API_KEY.strip().strip('"').strip("'")
                 req = urllib.request.Request(
                     "https://api.brevo.com/v3/smtp/email",
                     data=payload,
                     headers={
-                        "api-key": settings.BREVO_API_KEY,
+                        "api-key": brevo_key,
                         "Content-Type": "application/json",
                         "Accept": "application/json",
                         "User-Agent": "FastAPI-ECommerce/1.0"
