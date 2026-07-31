@@ -3,6 +3,7 @@ from uuid import UUID
 
 from fastapi import HTTPException, status
 
+from core.config import settings
 from core.security import (
     hash_password,
     verify_password,
