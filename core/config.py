@@ -12,6 +12,8 @@ class Settings(BaseSettings):
     OTP_EXPIRE_MINUTES: int = 10
 
     # SMTP / Email Configuration
+    RESEND_API_KEY: str = ""
+    RESEND_FROM_EMAIL: str = "onboarding@resend.dev"
     SMTP_HOST: str = "smtp.gmail.com"
     SMTP_PORT: int = 587
     SMTP_USER: str = ""

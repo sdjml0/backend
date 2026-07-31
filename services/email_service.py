@@ -1,6 +1,8 @@
+import json
 import logging
 import socket
 import smtplib
+import urllib.request
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
@@ -55,8 +57,7 @@ class EmailService:
     @staticmethod
     def send_otp_email(recipient_email: str, otp_code: str, purpose: str = "signup") -> bool:
         """
-        Sends a 6-digit OTP verification code via email using IPv4-enabled SMTP/SSL.
-        Falls back safely to server logs if SMTP servers/ports are unreachable.
+        Sends a 6-digit OTP verification code via Resend HTTPS API (Port 443) or SMTP fallback.
         """
         subject = f"Your Verification OTP Code: {otp_code}"
         purpose_label = "Email Verification (Sign Up)" if purpose == "signup" else "Password Reset Request"
@@ -78,13 +79,42 @@ class EmailService:
         </html>
         """
 
-        # Determine SMTP configuration
+        # Strategy 1: Primary Delivery via Resend HTTPS REST API (Port 443 - Never Blocked on Render)
+        if settings.RESEND_API_KEY:
+            try:
+                payload = json.dumps({
+                    "from": f"{settings.EMAILS_FROM_NAME} <{settings.RESEND_FROM_EMAIL}>",
+                    "to": [recipient_email],
+                    "subject": subject,
+                    "html": html_content
+                }).encode("utf-8")
+
+                req = urllib.request.Request(
+                    "https://api.resend.com/emails",
+                    data=payload,
+                    headers={
+                        "Authorization": f"Bearer {settings.RESEND_API_KEY}",
+                        "Content-Type": "application/json",
+                        "User-Agent": "FastAPI-ECommerce/1.0"
+                    },
+                    method="POST"
+                )
+
+                with urllib.request.urlopen(req, timeout=10) as resp:
+                    if resp.status in (200, 201):
+                        logger.info(f"📧 OTP Email successfully dispatched to {recipient_email} via Resend HTTPS API")
+                        print(f"📧 OTP Email successfully dispatched to {recipient_email} via Resend HTTPS API")
+                        return True
+            except Exception as resend_err:
+                logger.warning(f"⚠️ Resend HTTP API dispatch failed ({resend_err}). Attempting SMTP fallback...")
+
+        # Strategy 2: Determine SMTP configuration fallback
         smtp_user = settings.USERNAME_GMAIL_SMTP or settings.SMTP_USER or settings.EMAILS_FROM_EMAIL
         smtp_password = settings.PASSWORD_GMAIL_SMTP or settings.SMTP_PASSWORD
 
         if not smtp_user or smtp_user == "noreply@ecommerce.com" or not smtp_password:
             logger.warning(
-                "⚠️ SMTP Credentials missing on server! Please configure USERNAME_GMAIL_SMTP and PASSWORD_GMAIL_SMTP environment variables in Render Dashboard."
+                "⚠️ Resend API Key or SMTP Credentials missing on server! Please configure RESEND_API_KEY or SMTP credentials in Render Dashboard."
             )
             print(f"🔑 [DEV / FALLBACK OTP] Email: {recipient_email} | Purpose: {purpose} | OTP: {otp_code}")
             return True
@@ -98,9 +128,9 @@ class EmailService:
         tls_error = "Not attempted"
         ssl_error = "Not attempted"
 
-        # Strategy 1: Try standard SMTP with STARTTLS over IPv4 (Port 587)
+        # Try standard SMTP with STARTTLS over IPv4 (Port 587)
         try:
-            with SMTP_IPv4(settings.SMTP_HOST, settings.SMTP_PORT, timeout=12) as server:
+            with SMTP_IPv4(settings.SMTP_HOST, settings.SMTP_PORT, timeout=10) as server:
                 server.ehlo()
                 server.starttls()
                 server.ehlo()
@@ -114,9 +144,9 @@ class EmailService:
             tls_error = str(e)
             logger.warning(f"⚠️ SMTP TLS ({settings.SMTP_PORT}) failed on server: {tls_error}. Attempting SSL (Port 465) fallback...")
 
-        # Strategy 2: Fallback to SMTP_SSL over IPv4 (Port 465)
+        # Fallback to SMTP_SSL over IPv4 (Port 465)
         try:
-            with SMTP_SSL_IPv4(settings.SMTP_HOST, 465, timeout=12) as server:
+            with SMTP_SSL_IPv4(settings.SMTP_HOST, 465, timeout=10) as server:
                 server.login(smtp_user, smtp_password)
                 server.sendmail(smtp_user, recipient_email, msg.as_string())
 
@@ -128,7 +158,7 @@ class EmailService:
             logger.error(f"❌ All SMTP dispatch attempts failed on server for {recipient_email}. TLS Error: {tls_error} | SSL Error: {ssl_error}")
             print(f"❌ SMTP failed for {recipient_email}. TLS: {tls_error} | SSL: {ssl_error}")
 
-        # Safe fallback log output if SMTP network ports (587/465) are blocked by cloud container firewall
+        # Safe fallback log output if email network services are unreachable
         logger.info(f"🔑 [FALLBACK LOG OTP] Email: {recipient_email} | Purpose: {purpose} | OTP: {otp_code}")
         print(f"🔑 [FALLBACK LOG OTP] Email: {recipient_email} | Purpose: {purpose} | OTP: {otp_code}")
         return True
