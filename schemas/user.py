@@ -19,6 +19,9 @@ class SignupResponse(BaseModel):
     message: str
     userid: UUID
     email: EmailStr
+    accessToken: Optional[str] = None
+    expiresIn: Optional[int] = 3600
+    user: Optional[AuthUser] = None
 
 
 

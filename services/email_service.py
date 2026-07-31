@@ -37,8 +37,8 @@ class EmailService:
         """
 
         # Determine SMTP configuration
-        smtp_user = settings.SMTP_USER or settings.EMAILS_FROM_EMAIL
-        smtp_password = settings.SMTP_PASSWORD or settings.PASSWORD_GMAIL_SMTP
+        smtp_user = settings.USERNAME_GMAIL_SMTP or settings.SMTP_USER or settings.EMAILS_FROM_EMAIL
+        smtp_password = settings.PASSWORD_GMAIL_SMTP or settings.SMTP_PASSWORD
 
         if smtp_user and smtp_user != "noreply@ecommerce.com" and smtp_password:
             try:

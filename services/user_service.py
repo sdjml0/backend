@@ -52,10 +52,29 @@ class UserService:
         if "otpid" in otp_res:
             await OTPRepository.delete_otp(otp_res["otpid"])
 
+        # 6. Generate access token so client can immediately authenticate
+        access_token = create_access_token(
+            {
+                "sub": str(userid),
+                "name": user.name,
+                "email": user.email,
+                "phone": user.phone,
+                "role": "Owner"
+            }
+        )
+
         return {
             "message": "User registered successfully.",
             "userid": str(userid),
-            "email": user.email
+            "email": user.email,
+            "accessToken": access_token,
+            "expiresIn": 3600,
+            "user": {
+                "id": str(userid),
+                "name": user.name,
+                "email": user.email,
+                "role": "Owner"
+            }
         }
 
     @staticmethod

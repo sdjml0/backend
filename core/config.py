@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     SMTP_PORT: int = 587
     SMTP_USER: str = ""
     SMTP_PASSWORD: str = ""
+    USERNAME_GMAIL_SMTP: str = ""
     PASSWORD_GMAIL_SMTP: str = ""
     EMAILS_FROM_EMAIL: str = "noreply@ecommerce.com"
     EMAILS_FROM_NAME: str = "E-Commerce Verification"
