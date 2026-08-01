@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 import secrets
+from typing import Optional
 from fastapi import HTTPException, status
 
 from core.config import settings
@@ -14,18 +15,18 @@ from features.otp.repository import OTPRepository
 logger = logging.getLogger(__name__)
 
 
-class OTPService:
+class MagicLinkService:
 
     @staticmethod
-    def _generate_6_digit_otp() -> str:
-        """Generates a cryptographically secure 6-digit numeric OTP code."""
-        return "".join(secrets.choice("0123456789") for _ in range(6))
+    def _generate_alphanumeric_token() -> str:
+        """Generates a cryptographically secure 43-character URL-safe token."""
+        return secrets.token_urlsafe(32)
 
     @staticmethod
-    async def send_otp(email: str, purpose: str = "signup"):
+    async def send_magic_link(email: str, purpose: str = "signup"):
         """
-        Generates and sends a 6-digit OTP to the user email for signup or password_reset.
-        OTP expires in 10 minutes.
+        Generates and emails a magic link token for signup or password_reset.
+        Token expires in 10 minutes.
         """
         if purpose == "signup":
             exists = await UserRepository.user_exists(email)
@@ -42,43 +43,49 @@ class OTPService:
                     detail="User with this email was not found."
                 )
 
-        otp_code = OTPService._generate_6_digit_otp()
+        token_code = MagicLinkService._generate_alphanumeric_token()
 
         await OTPRepository.save_otp(
             email=email,
-            otp_code=otp_code,
+            otp_code=token_code,
             purpose=purpose,
             expires_in_minutes=settings.OTP_EXPIRE_MINUTES
         )
 
         await asyncio.to_thread(
-            EmailService.send_otp_email,
+            EmailService.send_magic_link_email,
             recipient_email=email,
-            otp_code=otp_code,
+            token_code=token_code,
             purpose=purpose
         )
 
         return {
             "success": True,
-            "message": f"6-digit OTP code sent to {email}. It will expire in {settings.OTP_EXPIRE_MINUTES} minutes.",
+            "message": f"Magic link sent to {email}. It will expire in {settings.OTP_EXPIRE_MINUTES} minutes.",
             "expires_in_minutes": settings.OTP_EXPIRE_MINUTES
         }
 
+    # Backward compatibility alias
+    send_otp = send_magic_link
+
     @staticmethod
-    async def verify_otp(email: str, otp_code: str, purpose: str = "signup"):
+    async def verify_link(token: str):
         """
-        Verifies that a 6-digit OTP code is valid and active (within 10 minutes).
-        For 'signup' purpose with pending user payload, creates the user and returns JWT accessToken.
+        Verifies magic link token from URL query params (`?token=...`).
+        If signup token: Finalizes registration, creates user, generates fresh JWT token for auto-login.
+        If password reset token: Validates active status and returns verification metadata.
         """
-        otp_row = await OTPRepository.get_valid_otp(email, otp_code, purpose)
+        otp_row = await OTPRepository.get_valid_otp_by_token(token)
 
         if not otp_row:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid or expired 6-digit OTP code. Please request a new OTP."
+                detail="Invalid or expired magic link. Please request a new link."
             )
 
         otpid = otp_row["otpid"]
+        email = otp_row["email"]
+        purpose = otp_row["purpose"]
         payload_data = otp_row["payload"] if "payload" in otp_row and otp_row["payload"] else None
 
         if isinstance(payload_data, str):
@@ -141,6 +148,14 @@ class OTPService:
 
         return {
             "success": True,
-            "message": "OTP validated successfully.",
-            "otpid": otpid
+            "message": "Magic link token validated successfully.",
+            "purpose": purpose,
+            "email": email
         }
+
+    # Backward compatibility alias
+    verify_otp = verify_link
+
+
+# Backward compatibility class alias
+OTPService = MagicLinkService

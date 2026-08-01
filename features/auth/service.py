@@ -9,6 +9,7 @@ from typing import Optional
 from uuid import UUID
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from email.utils import make_msgid
 from fastapi import HTTPException, status
 
 from core.config import settings
@@ -68,19 +69,14 @@ class SMTP_SSL_IPv4(smtplib.SMTP_SSL):
 class EmailService:
 
     @staticmethod
-    def send_otp_email(recipient_email: str, otp_code: str, purpose: str = "signup") -> bool:
-        import base64
-
-        subject = f"Your Verification OTP Code: {otp_code}"
+    def send_magic_link_email(recipient_email: str, token_code: str, purpose: str = "signup") -> bool:
         purpose_label = "Email Verification (Sign Up)" if purpose == "signup" else "Password Reset Request"
+        subject = f"Verification Request for {purpose_label}"
 
         frontend_url = getattr(settings, "FRONTEND_URL", "https://frontend-ui-new-liart.vercel.app").rstrip("/")
-        action_path = "forgot-password" if purpose == "password_reset" else "forgot-password"
-
-        # Encode OTP into URL-safe Base64 token to hide raw numeric OTP in URL
-        otp_token = base64.urlsafe_b64encode(otp_code.encode("utf-8")).decode("utf-8").rstrip("=")
-        action_url = f"{frontend_url}/{action_path}?token={otp_token}"
-        button_text = "Reset Password" if purpose == "password_reset" else "Verify OTP"
+        action_path = "verify-email" if purpose == "signup" else "forgot-password"
+        action_url = f"{frontend_url}/{action_path}?token={token_code}"
+        button_text = "Verify Email & Log In" if purpose == "signup" else "Reset Password"
 
         html_content = f"""
         <!DOCTYPE html>
@@ -100,7 +96,7 @@ class EmailService:
                             <tr>
                                 <td style="background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%); padding: 32px 40px; text-align: center;">
                                     <div style="display: inline-block; background: rgba(79, 70, 229, 0.2); padding: 8px 16px; border-radius: 20px; margin-bottom: 12px; border: 1px solid rgba(129, 140, 248, 0.3);">
-                                        <span style="color: #818CF8; font-size: 12px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;">Security Center</span>
+                                        <span style="color: #818CF8; font-size: 12px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;">Magic Link Authentication</span>
                                     </div>
                                     <h1 style="color: #FFFFFF; font-size: 22px; font-weight: 700; margin: 0; letter-spacing: -0.5px;">E-Commerce Admin Portal</h1>
                                 </td>
@@ -109,33 +105,27 @@ class EmailService:
                             <!-- Body Content -->
                             <tr>
                                 <td style="padding: 40px; text-align: left;">
-                                    <h2 style="font-size: 18px; font-weight: 600; color: #0F172A; margin-top: 0; margin-bottom: 8px;">Authentication Code</h2>
-                                    <p style="font-size: 14px; color: #64748B; margin-top: 0; margin-bottom: 28px; line-height: 1.6;">
-                                        You recently initiated an <strong>{purpose_label}</strong>. Use the verification code below or click the action button to complete the process.
+                                    <h2 style="font-size: 18px; font-weight: 600; color: #0F172A; margin-top: 0; margin-bottom: 8px;">Action Required</h2>
+                                    <p style="font-size: 14px; color: #64748B; margin-top: 0; margin-bottom: 32px; line-height: 1.6;">
+                                        Click the secure button below to proceed with your <strong>{purpose_label}</strong>.
                                     </p>
 
-                                    <!-- OTP Code Box -->
-                                    <div style="background-color: #F1F5F9; border: 1px solid #E2E8F0; border-radius: 12px; padding: 24px; text-align: center; margin-bottom: 32px;">
-                                        <div style="font-size: 11px; font-weight: 700; color: #64748B; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 8px;">One-Time Security Passcode</div>
-                                        <span style="font-family: 'Courier New', Courier, monospace; font-size: 36px; font-weight: 800; letter-spacing: 10px; color: #4F46E5; display: inline-block; margin-left: 10px;">{otp_code}</span>
-                                    </div>
-
                                     <!-- Primary CTA Button -->
-                                    <div style="text-align: center; margin-bottom: 32px;">
-                                        <a href="{action_url}" target="_blank" style="background: linear-gradient(135deg, #4F46E5 0%, #4338CA 100%); color: #FFFFFF; padding: 14px 36px; text-decoration: none; border-radius: 10px; font-weight: 600; font-size: 15px; display: inline-block; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);">
+                                    <div style="text-align: center; margin-bottom: 36px;">
+                                        <a href="{action_url}" target="_blank" style="background: linear-gradient(135deg, #4F46E5 0%, #4338CA 100%); color: #FFFFFF; padding: 16px 40px; text-decoration: none; border-radius: 10px; font-weight: 600; font-size: 16px; display: inline-block; box-shadow: 0 4px 14px rgba(79, 70, 229, 0.3);">
                                             {button_text}
                                         </a>
                                     </div>
 
                                     <!-- Link Fallback -->
                                     <div style="background-color: #F8FAFC; border-radius: 8px; padding: 16px; margin-bottom: 24px; border-left: 3px solid #4F46E5;">
-                                        <p style="font-size: 12px; color: #64748B; margin: 0 0 6px 0;">Having trouble clicking the button? Copy and paste this URL into your browser:</p>
+                                        <p style="font-size: 12px; color: #64748B; margin: 0 0 6px 0;">Or copy and paste this link into your browser:</p>
                                         <a href="{action_url}" style="font-size: 12px; color: #4F46E5; text-decoration: underline; word-break: break-all;">{action_url}</a>
                                     </div>
 
                                     <!-- Expiration & Security Info -->
                                     <p style="font-size: 13px; color: #94A3B8; margin: 0; line-height: 1.5; text-align: center;">
-                                        ⏱️ This security code expires in <strong style="color: #64748B;">{settings.OTP_EXPIRE_MINUTES} minutes</strong>. If you did not request this email, no action is required.
+                                        ⏱️ This link is valid for <strong style="color: #64748B;">{settings.OTP_EXPIRE_MINUTES} minutes</strong>. If you did not request this email, please ignore it.
                                     </p>
                                 </td>
                             </tr>
@@ -144,7 +134,7 @@ class EmailService:
                             <tr>
                                 <td style="background-color: #F8FAFC; border-top: 1px solid #E2E8F0; padding: 24px 40px; text-align: center;">
                                     <p style="font-size: 12px; color: #94A3B8; margin: 0 0 4px 0;">© 2026 E-Commerce Platform. All rights reserved.</p>
-                                    <p style="font-size: 11px; color: #CBD5E1; margin: 0;">Automated security notification • Please do not reply to this message</p>
+                                    <p style="font-size: 11px; color: #CBD5E1; margin: 0;">Automated security notification • Please do not reply</p>
                                 </td>
                             </tr>
                         </table>
@@ -164,6 +154,14 @@ class EmailService:
                         "email": sender_email
                     },
                     "to": [{"email": recipient_email}],
+                    "replyTo": {
+                        "email": sender_email,
+                        "name": settings.EMAILS_FROM_NAME
+                    },
+                    "headers": {
+                        "Auto-Submitted": "auto-generated",
+                        "X-Auto-Response-Suppress": "All"
+                    },
                     "subject": subject,
                     "htmlContent": html_content
                 }).encode("utf-8")
@@ -180,10 +178,15 @@ class EmailService:
                 )
                 with urllib.request.urlopen(req, timeout=12) as response:
                     if response.status in (200, 201, 202):
-                        logger.info(f"✅ OTP email delivered to {recipient_email} via Brevo API.")
+                        logger.info(f"✅ Magic link email delivered to {recipient_email} via Brevo API.")
                         return True
+            except urllib.error.HTTPError as e:
+                err_body = e.read().decode("utf-8") if e.fp else ""
+                logger.warning(f"⚠️ Brevo API delivery failed HTTP {e.code}: {err_body}. Falling back to SMTP.")
             except Exception as e:
                 logger.warning(f"⚠️ Brevo API delivery failed ({e}). Falling back to SMTP.")
+
+        text_content = f"Hello,\n\nYou requested a {purpose_label}. Please click or copy and paste the link below into your browser to proceed:\n\n{action_url}\n\nThis link is valid for {settings.OTP_EXPIRE_MINUTES} minutes.\n\nThank you,\nE-Commerce Team"
 
         smtp_host = getattr(settings, "SERVER_GMAIL_SMTP", settings.SMTP_HOST)
         smtp_port = getattr(settings, "PORT_GMAIL_SMTP", settings.SMTP_PORT)
@@ -193,18 +196,35 @@ class EmailService:
                 msg["Subject"] = subject
                 msg["From"] = f"{settings.EMAILS_FROM_NAME} <{settings.USERNAME_GMAIL_SMTP}>"
                 msg["To"] = recipient_email
+                msg["Reply-To"] = settings.USERNAME_GMAIL_SMTP
+                msg["Auto-Submitted"] = "auto-generated"
+                msg["X-Auto-Response-Suppress"] = "All"
+                msg["Message-ID"] = make_msgid()
+                msg.attach(MIMEText(text_content, "plain"))
                 msg.attach(MIMEText(html_content, "html"))
 
-                with SMTP_SSL_IPv4(smtp_host, smtp_port, timeout=12) as server:
-                    server.login(settings.USERNAME_GMAIL_SMTP, settings.PASSWORD_GMAIL_SMTP)
-                    server.sendmail(settings.USERNAME_GMAIL_SMTP, [recipient_email], msg.as_string())
-                logger.info(f"✅ OTP email delivered to {recipient_email} via SSL SMTP.")
+                if int(smtp_port) == 465:
+                    with SMTP_SSL_IPv4(smtp_host, int(smtp_port), timeout=12) as server:
+                        server.login(settings.USERNAME_GMAIL_SMTP, settings.PASSWORD_GMAIL_SMTP)
+                        server.sendmail(settings.USERNAME_GMAIL_SMTP, [recipient_email], msg.as_string())
+                else:
+                    with SMTP_IPv4(smtp_host, int(smtp_port), timeout=12) as server:
+                        server.ehlo()
+                        server.starttls()
+                        server.ehlo()
+                        server.login(settings.USERNAME_GMAIL_SMTP, settings.PASSWORD_GMAIL_SMTP)
+                        server.sendmail(settings.USERNAME_GMAIL_SMTP, [recipient_email], msg.as_string())
+
+                logger.info(f"✅ Magic link email delivered to {recipient_email} via SMTP.")
                 return True
             except Exception as e:
                 logger.error(f"❌ SMTP email dispatch failed ({e}).")
 
-        logger.info(f"ℹ️ Dev/Mock Mode OTP for {recipient_email}: [{otp_code}]")
+        masked_token = token_code[:6] + "..." + token_code[-4:] if len(token_code) > 10 else "***"
+        logger.info(f"ℹ️ Dev/Mock Mode Magic Link Token for {recipient_email}: [{masked_token}]")
         return False
+
+    send_otp_email = send_magic_link_email
 
 
 class UserService:
@@ -258,15 +278,25 @@ class UserService:
 
     @staticmethod
     async def reset_password(req: ResetPasswordRequest):
-        from features.otp.service import OTPService
+        from features.otp.service import MagicLinkService
 
-        otp_res = await OTPService.verify_otp(
-            email=req.email,
-            otp_code=req.otp,
-            purpose="password_reset"
-        )
+        if not req.token:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Magic link token parameter is required for password reset."
+            )
 
-        user = await UserRepository.get_user_by_email(req.email)
+        otp_row = await OTPRepository.get_valid_otp_by_token(req.token)
+        if not otp_row or otp_row.get("purpose") != "password_reset":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid or expired magic link token. Please request a new password reset link."
+            )
+
+        target_email = otp_row["email"]
+        otpid = otp_row["otpid"]
+
+        user = await UserRepository.get_user_by_email(target_email)
         if user is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -274,14 +304,32 @@ class UserService:
             )
 
         hashed_password = hash_password(req.new_password)
-        await OTPRepository.update_user_password(req.email, hashed_password)
+        await OTPRepository.update_user_password(target_email, hashed_password)
 
-        if "otpid" in otp_res:
-            await OTPRepository.delete_otp(otp_res["otpid"])
+        await OTPRepository.delete_otp(otpid)
+
+        user_dict = dict(user)
+        access_token = create_access_token(
+            {
+                "sub": str(user["userid"]),
+                "name": user["name"],
+                "email": user["email"],
+                "phone": user_dict.get("phone"),
+                "role": user_dict.get("role", "Owner")
+            }
+        )
 
         return {
             "success": True,
-            "message": "Password reset successfully. You can now login with your new password."
+            "message": "Password updated successfully. You are now logged in.",
+            "accessToken": access_token,
+            "expiresIn": 3600,
+            "user": {
+                "id": str(user["userid"]),
+                "name": user["name"],
+                "email": user["email"],
+                "role": user_dict.get("role", "Owner")
+            }
         }
 
     @staticmethod

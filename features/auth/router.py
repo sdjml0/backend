@@ -12,12 +12,11 @@ from features.auth.schema import (
 )
 from features.auth.service import UserService
 from features.otp.schema import (
-    SendOTPRequest,
-    VerifyOTPRequest,
-    OTPResponse,
+    SendMagicLinkRequest,
+    MagicLinkResponse,
     ResetPasswordRequest,
 )
-from features.otp.service import OTPService
+from features.otp.service import MagicLinkService
 
 router = APIRouter(
     prefix="/auth",
@@ -38,35 +37,47 @@ async def signup(user: UserSignup):
 
 
 @router.post(
-    "/send-otp",
-    response_model=OTPResponse,
-    summary="Request a 6-digit OTP email verification code"
+    "/send-magic-link",
+    response_model=MagicLinkResponse,
+    summary="Request a magic link email for verification or password reset"
 )
-async def send_otp(req: SendOTPRequest):
+async def send_magic_link(req: SendMagicLinkRequest):
     """
-    Dispatches a 6-digit numeric OTP code for email verification (`signup` or `password_reset`).
+    Dispatches a magic link email containing a 43-character URL-safe token (`signup` or `password_reset`).
     """
-    return await OTPService.send_otp(email=req.email, purpose=req.purpose)
+    return await MagicLinkService.send_magic_link(email=req.email, purpose=req.purpose)
 
 
+# Alias for backward compatibility
 @router.post(
-    "/verify-otp",
-    summary="Verify 6-digit OTP & finalize registration"
+    "/send-otp",
+    response_model=MagicLinkResponse,
+    summary="Alias for send-magic-link"
 )
-async def verify_otp(req: VerifyOTPRequest):
+async def send_otp(req: SendMagicLinkRequest):
+    return await MagicLinkService.send_magic_link(email=req.email, purpose=req.purpose)
+
+
+@router.get(
+    "/verify-link",
+    summary="Verify magic link token from email URL"
+)
+async def verify_link(token: str):
     """
-    Validates a 6-digit OTP code. For `signup`, creates the user account and returns a JWT access token.
+    Verifies the long alphanumeric magic link token from the email URL query param (`?token=...`).
+    For `signup`, finalizes account creation and returns a fresh JWT access token for instant auto-login.
+    For `password_reset`, validates token expiration before rendering the new password form.
     """
-    return await OTPService.verify_otp(email=req.email, otp_code=req.otp, purpose=req.purpose)
+    return await MagicLinkService.verify_link(token)
 
 
 @router.post(
     "/reset-password",
-    summary="Reset password using verified 6-digit OTP code"
+    summary="Reset password using valid magic link token"
 )
 async def reset_password(req: ResetPasswordRequest):
     """
-    Resets the password for an existing user account after verifying the OTP code.
+    Resets user password in PostgreSQL database using magic link token and returns a fresh JWT access token.
     """
     return await UserService.reset_password(req)
 

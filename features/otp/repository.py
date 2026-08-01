@@ -43,6 +43,16 @@ class OTPRepository:
         return await db.fetchrow(query, email, otp_code, purpose)
 
     @staticmethod
+    async def get_valid_otp_by_token(token: str):
+        query = """
+            SELECT otpid, email, otp_code, purpose, payload, is_verified, created_at, expires_at
+            FROM otps
+            WHERE otp_code = $1
+              AND expires_at > CURRENT_TIMESTAMP;
+        """
+        return await db.fetchrow(query, token)
+
+    @staticmethod
     async def mark_verified(otpid: UUID):
         query = """
             UPDATE otps

@@ -69,8 +69,8 @@ All `/auth/me` profile management endpoints require `Authorization: Bearer <acce
 
 ---
 
-### 3.2 Request Standalone 6-Digit OTP Code
-- **URL**: `POST /auth/send-otp`
+### 3.2 Request Magic Link Email
+- **URL**: `POST /auth/send-magic-link` *(Alias: `POST /auth/send-otp`)*
 - **Headers**: `Content-Type: application/json`
 
 #### Request Payload:
@@ -86,27 +86,18 @@ All `/auth/me` profile management endpoints require `Authorization: Bearer <acce
 ```json
 {
   "success": true,
-  "message": "6-digit OTP code sent to alex.morgan@example.com. It will expire in 10 minutes.",
+  "message": "Magic link sent to alex.morgan@example.com. It will expire in 10 minutes.",
   "expires_in_minutes": 10
 }
 ```
 
 ---
 
-### 3.3 Step 2: Verify 6-Digit OTP & Complete Signup
-- **URL**: `POST /auth/verify-otp`
-- **Headers**: `Content-Type: application/json`
+### 3.3 Verify Magic Link Token (Email Link Click)
+- **URL**: `GET /auth/verify-link?token=k9X_mP2zQ7vW0xY1zA3bC5dE7fG9hI1jK3mL5nO7pQ9`
+- **Headers**: None
 
-#### Request Payload:
-```json
-{
-  "email": "alex.morgan@example.com",
-  "otp": "654321",
-  "purpose": "signup"
-}
-```
-
-#### Response (`200 OK`):
+#### Response (`200 OK` - Signup Verification & Auto-Login):
 ```json
 {
   "message": "User registered successfully.",
@@ -123,9 +114,49 @@ All `/auth/me` profile management endpoints require `Authorization: Bearer <acce
 }
 ```
 
+#### Response (`200 OK` - Password Reset Token Validation):
+```json
+{
+  "success": true,
+  "message": "Magic link token validated successfully.",
+  "purpose": "password_reset",
+  "email": "alex.morgan@example.com"
+}
+```
+
 ---
 
-### 3.4 User Login
+### 3.4 Reset Password & Auto-Login
+- **URL**: `POST /auth/reset-password`
+- **Headers**: `Content-Type: application/json`
+
+#### Request Payload:
+```json
+{
+  "token": "k9X_mP2zQ7vW0xY1zA3bC5dE7fG9hI1jK3mL5nO7pQ9",
+  "new_password": "NewSecretPassword456"
+}
+```
+
+#### Response (`200 OK`):
+```json
+{
+  "success": true,
+  "message": "Password updated successfully. You are now logged in.",
+  "accessToken": "eyJhbGciOiJIUzI1Ni...",
+  "expiresIn": 3600,
+  "user": {
+    "id": "5d09522b-a187-46bc-bf57-2c9b4407dddf",
+    "name": "Alex Morgan",
+    "email": "alex.morgan@example.com",
+    "role": "Owner"
+  }
+}
+```
+
+---
+
+### 3.5 User Login
 - **URL**: `POST /auth/login`
 - **Headers**: `Content-Type: application/json`
 
@@ -149,29 +180,6 @@ All `/auth/me` profile management endpoints require `Authorization: Bearer <acce
     "email": "alex.morgan@example.com",
     "role": "Owner"
   }
-}
-```
-
----
-
-### 3.5 Reset Password
-- **URL**: `POST /auth/reset-password`
-- **Headers**: `Content-Type: application/json`
-
-#### Request Payload:
-```json
-{
-  "email": "alex.morgan@example.com",
-  "otp": "654321",
-  "new_password": "NewSecretPassword456"
-}
-```
-
-#### Response (`200 OK`):
-```json
-{
-  "success": true,
-  "message": "Password reset successfully. You can now login with your new password."
 }
 ```
 
