@@ -16,12 +16,19 @@ class UserSignup(BaseModel):
 
 
 class UserUpdate(BaseModel):
-    name: Optional[str] = Field(None, min_length=2, max_length=100)
+    name: Optional[str] = Field(None, min_length=1, max_length=100)
     phone: Optional[str] = Field(None, max_length=50)
     address: Optional[str] = Field(None)
     city: Optional[str] = Field(None, max_length=100)
     postalcode: Optional[str] = Field(None, max_length=20)
+    postal_code: Optional[str] = Field(None, max_length=20)
+    postalCode: Optional[str] = Field(None, max_length=20)
+    zip: Optional[str] = Field(None, max_length=20)
+    zipcode: Optional[str] = Field(None, max_length=20)
     country: Optional[str] = Field(None, max_length=100)
+
+    def get_postalcode(self) -> Optional[str]:
+        return self.postalcode or self.postal_code or self.postalCode or self.zip or self.zipcode
 
 
 class AuthUser(BaseModel):

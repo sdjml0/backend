@@ -2,7 +2,7 @@ from typing import Optional
 from uuid import UUID
 
 from core.database import db
-from features.auth.schema import UserSignup
+from features.auth.schema import UserSignup, UserUpdate
 
 
 class UserRepository:
@@ -92,7 +92,8 @@ class UserRepository:
         return await db.fetchrow(query, email)
 
     @staticmethod
-    async def update_user(userid: UUID, user_update):
+    async def update_user(userid: UUID, user_update: UserUpdate):
+        postalcode = user_update.get_postalcode() if hasattr(user_update, "get_postalcode") else user_update.postalcode
         query = """
             UPDATE users
             SET 
@@ -112,7 +113,7 @@ class UserRepository:
             user_update.phone,
             user_update.address,
             user_update.city,
-            user_update.postalcode,
+            postalcode,
             user_update.country
         )
         return dict(row) if row else None

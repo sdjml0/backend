@@ -161,6 +161,11 @@ async def get_current_user_profile_alias(
     response_model=UserResponse,
     summary="Update authenticated user profile"
 )
+@router.patch(
+    "/me",
+    response_model=UserResponse,
+    include_in_schema=False
+)
 async def update_current_user_profile(
     user_data: UserUpdate,
     userid: UUID = Depends(get_current_user)
@@ -175,6 +180,11 @@ async def update_current_user_profile(
     "/profile",
     response_model=UserResponse,
     summary="Alias for /auth/me (Update authenticated user profile)"
+)
+@router.patch(
+    "/profile",
+    response_model=UserResponse,
+    include_in_schema=False
 )
 async def update_current_user_profile_alias(
     user_data: UserUpdate,
