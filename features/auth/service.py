@@ -297,13 +297,16 @@ class UserService:
             )
 
         otp_row = await OTPRepository.get_valid_otp_by_token(token)
+        if not otp_row and req.email:
+            otp_row = await OTPRepository.get_valid_otp(req.email, token, purpose="password_reset")
+
         if not otp_row or otp_row.get("purpose") != "password_reset":
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid or expired magic link token. Please request a new password reset link."
             )
 
-        target_email = otp_row["email"]
+        target_email = req.email or otp_row["email"]
         otpid = otp_row["otpid"]
 
         user = await UserRepository.get_user_by_email(target_email)

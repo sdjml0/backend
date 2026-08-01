@@ -155,11 +155,12 @@ All `/auth/me` profile management endpoints require `Authorization: Bearer <acce
 #### Request Payload:
 ```json
 {
+  "email": "alex.morgan@example.com",
   "token": "k9X_mP2zQ7vW0xY1zA3bC5dE7fG9hI1jK3mL5nO7pQ9",
   "new_password": "NewSecretPassword456"
 }
 ```
-*(Field Aliases Supported: Token can be `token`, `resetotp`, `otp`, or `code`; Password can be `new_password`, `password`, or `newPassword`)*
+*(Field Aliases Supported: Token can be `token`, `resetotp`, `otp`, or `code`; Password can be `new_password`, `password`, or `newPassword`; `email` is optional)*
 
 #### Response (`200 OK`):
 ```json
