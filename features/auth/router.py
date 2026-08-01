@@ -145,6 +145,17 @@ async def get_current_user_profile(
     return await UserService.get_profile(userid)
 
 
+@router.get(
+    "/profile",
+    response_model=UserResponse,
+    summary="Alias for /auth/me (Get authenticated user profile)"
+)
+async def get_current_user_profile_alias(
+    userid: UUID = Depends(get_current_user)
+):
+    return await UserService.get_profile(userid)
+
+
 @router.put(
     "/me",
     response_model=UserResponse,
@@ -157,6 +168,18 @@ async def update_current_user_profile(
     """
     Updates profile attributes (name, phone, address, city, postal code, country) for the authenticated user.
     """
+    return await UserService.update_profile(userid, user_data)
+
+
+@router.put(
+    "/profile",
+    response_model=UserResponse,
+    summary="Alias for /auth/me (Update authenticated user profile)"
+)
+async def update_current_user_profile_alias(
+    user_data: UserUpdate,
+    userid: UUID = Depends(get_current_user)
+):
     return await UserService.update_profile(userid, user_data)
 
 
