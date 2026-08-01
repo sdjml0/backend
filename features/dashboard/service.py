@@ -1,9 +1,11 @@
-from core.database import logger
 import asyncio
+import logging
+import time
 from typing import Optional, List, Dict, Any
 from uuid import UUID
-from core.database import db
-from repositories.dashboard_repository import DashboardRepository
+
+from core.database import logger
+from features.dashboard.repository import DashboardRepository
 
 DEMO_USER_ID = UUID("5d09522b-a187-46bc-bf57-2c9b4407dddf")
 
@@ -27,9 +29,6 @@ STATUS_COLORS = {
     "Shipped": "#F59E0B",
     "Cancelled": "#EF4444",
 }
-
-
-import time
 
 _OVERVIEW_CACHE: Dict[str, Any] = {}
 _CACHE_TIMESTAMP: Dict[str, float] = {}
@@ -408,7 +407,6 @@ class DashboardService:
 
         overview = await DashboardService.get_overview(userid)
         return overview.get("data", {}).get("inventoryAlerts", [])
-
 
     @staticmethod
     async def get_user_products(userid: UUID) -> List[Dict[str, Any]]:

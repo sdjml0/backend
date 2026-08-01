@@ -15,6 +15,15 @@ class UserSignup(BaseModel):
     country: Optional[str] = "United States"
 
 
+class UserUpdate(BaseModel):
+    name: Optional[str] = Field(None, min_length=2, max_length=100)
+    phone: Optional[str] = Field(None, max_length=50)
+    address: Optional[str] = Field(None)
+    city: Optional[str] = Field(None, max_length=100)
+    postalcode: Optional[str] = Field(None, max_length=20)
+    country: Optional[str] = Field(None, max_length=100)
+
+
 class AuthUser(BaseModel):
     id: UUID
     name: str
@@ -56,3 +65,12 @@ class LoginResponse(BaseModel):
     accessToken: str
     expiresIn: int
     user: AuthUser
+
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+
+class TokenPayload(BaseModel):
+    userid: UUID

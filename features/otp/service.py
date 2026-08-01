@@ -1,12 +1,15 @@
 import asyncio
+import json
 import logging
 import secrets
 from fastapi import HTTPException, status
 
 from core.config import settings
-from repositories.otp_repository import OTPRepository
-from repositories.user_repository import UserRepository
-from services.email_service import EmailService
+from core.security import create_access_token
+from features.auth.repository import UserRepository
+from features.auth.schema import UserSignup
+from features.auth.service import EmailService
+from features.otp.repository import OTPRepository
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +27,6 @@ class OTPService:
         Generates and sends a 6-digit OTP to the user email for signup or password_reset.
         OTP expires in 10 minutes.
         """
-        # Validate purpose rules
         if purpose == "signup":
             exists = await UserRepository.user_exists(email)
             if exists:
@@ -40,10 +42,8 @@ class OTPService:
                     detail="User with this email was not found."
                 )
 
-        # Generate 6-digit OTP
         otp_code = OTPService._generate_6_digit_otp()
 
-        # Save OTP in database with 10-minute expiration
         await OTPRepository.save_otp(
             email=email,
             otp_code=otp_code,
@@ -51,14 +51,12 @@ class OTPService:
             expires_in_minutes=settings.OTP_EXPIRE_MINUTES
         )
 
-        # Dispatch OTP via email service in non-blocking worker thread
         await asyncio.to_thread(
             EmailService.send_otp_email,
             recipient_email=email,
             otp_code=otp_code,
             purpose=purpose
         )
-
 
         return {
             "success": True,
@@ -70,12 +68,8 @@ class OTPService:
     async def verify_otp(email: str, otp_code: str, purpose: str = "signup"):
         """
         Verifies that a 6-digit OTP code is valid and active (within 10 minutes).
-        For 'signup' purpose with pending user payload, creates the user and returns JWT accessToken for immediate login.
+        For 'signup' purpose with pending user payload, creates the user and returns JWT accessToken.
         """
-        import json
-        from core.security import create_access_token
-        from schemas.user import UserSignup
-
         otp_row = await OTPRepository.get_valid_otp(email, otp_code, purpose)
 
         if not otp_row:
@@ -93,7 +87,6 @@ class OTPService:
             except Exception:
                 pass
 
-        # If this is a signup OTP with stored pending user payload, finalize user creation & return JWT token
         if purpose == "signup" and payload_data and isinstance(payload_data, dict):
             user_email = payload_data.get("email", email)
             exists = await UserRepository.user_exists(user_email)
@@ -118,10 +111,8 @@ class OTPService:
             hashed_pwd = payload_data.get("password")
             userid = await UserRepository.create_user(user=signup_user, hashed_password=hashed_pwd)
 
-            # Clean up consumed OTP
             await OTPRepository.delete_otp(otpid)
 
-            # Generate access token for immediate authentication to dashboard
             access_token = create_access_token(
                 {
                     "sub": str(userid),
@@ -146,7 +137,6 @@ class OTPService:
                 }
             }
 
-        # Otherwise mark OTP verified in DB
         await OTPRepository.mark_verified(otpid)
 
         return {

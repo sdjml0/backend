@@ -8,8 +8,9 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
 
-    # OTP Configuration
+    # OTP & Frontend Configuration
     OTP_EXPIRE_MINUTES: int = 10
+    FRONTEND_URL: str = "https://frontend-ui-new-liart.vercel.app"
 
     # Email API Provider Configurations
     BREVO_API_KEY: str = ""

@@ -8,9 +8,10 @@ from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import Response
 
 from core.database import db
-from routers.auth_router import router as auth_router
-from routers.dashboard_router import router as dashboard_router
-from routers.api_v1_router import router as api_v1_router
+from features.auth.router import router as auth_router
+from features.dashboard.router import router as dashboard_router
+from features.products.router import router as product_router
+from features.stores.router import router as store_router
 
 logging.basicConfig(
     level=logging.INFO,
@@ -78,7 +79,8 @@ app.add_middleware(
 # Routers
 app.include_router(auth_router)
 app.include_router(dashboard_router)
-app.include_router(api_v1_router)
+app.include_router(product_router)
+app.include_router(store_router)
 
 
 @app.get("/")

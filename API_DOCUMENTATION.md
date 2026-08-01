@@ -1,97 +1,58 @@
 # E-Commerce API Documentation
 
-Complete reference documentation for Authentication, Email OTP Verification, and Password Reset APIs.
+Complete API Reference for Authentication, User Profile Management, Product CRUD, Store CRUD, and E-Commerce Dashboard Analytics.
 
 ---
 
 ## 1. Overview & Architecture
 
-- **Base URL**: `http://localhost:8000` (Local) / `https://<your-render-app>.onrender.com` (Production)
-- **Interactive OpenAPI Docs**: `/docs` (Swagger UI) or `/redoc`
-- **Authentication**: JWT Bearer Tokens (`Authorization: Bearer <token>`)
-- **OTP System**:
-  - **Code Format**: 6-digit numeric string (cryptographically secure random).
-  - **Expiration**: 10 minutes (`expires_at = NOW() + 10 minutes`).
-  - **Purposes**: `"signup"` and `"password_reset"`.
-  - **Invalidation**: Requesting a new OTP automatically deletes previous unverified OTPs for that email and purpose.
+- **Base URL**: `http://localhost:8000` (Local) / `https://<your-app>.onrender.com` (Production)
+- **Interactive Documentation**: `/docs` (Swagger UI) or `/redoc`
+- **Authentication Standard**: HTTP Bearer JWT Tokens (`Authorization: Bearer <accessToken>`)
+- **Modular Feature Architecture**:
+  - `features/auth/` — Signup, Login, Password Reset, User Profile CRUD
+  - `features/otp/` — 6-Digit Email OTP Generation & Verification
+  - `features/products/` — Full Product Management CRUD
+  - `features/stores/` — Connected Marketplace Store CRUD
+  - `features/dashboard/` — Aggregated E-Commerce Analytics & Reports
 
 ---
 
-## 2. Environment Variables Configuration
+## 2. Environment Configuration
 
-| Key | Description | Example / Recommended Value |
+| Key | Description | Example / Default Value |
 | :--- | :--- | :--- |
-| `DATABASE_URL` | PostgreSQL Connection DSN | `postgresql://user:pass@ep-host.aws.neon.tech/neondb?sslmode=require` |
-| `SECRET_KEY` | JWT signing secret key | `YourSuperSecretKeyGoesHere` |
+| `DATABASE_URL` | PostgreSQL Connection DSN | `postgresql://user:pass@host/neondb?sslmode=require` |
+| `SECRET_KEY` | JWT signing secret key | `ThisIsMySecretKeyChangeInProduction` |
 | `ALGORITHM` | JWT signing algorithm | `HS256` |
-| `ACCESS_TOKEN_EXPIRE_MINUTES` | JWT token validity in minutes | `60` |
-| `OTP_EXPIRE_MINUTES` | OTP code validity in minutes | `10` |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | Token validity (minutes) | `60` |
+| `OTP_EXPIRE_MINUTES` | OTP code validity (minutes) | `10` |
 | `SMTP_HOST` | SMTP server host | `smtp.gmail.com` |
-| `SMTP_PORT` | SMTP TLS port | `587` |
-| `USERNAME_GMAIL_SMTP` | Gmail account for sending emails | `your-email@gmail.com` |
-| `PASSWORD_GMAIL_SMTP` | Gmail 16-character App Password | `xxxx xxxx xxxx xxxx` |
-| `EMAILS_FROM_EMAIL` | Sender email address | `your-email@gmail.com` |
-| `EMAILS_FROM_NAME` | Sender name shown in recipient inbox | `E-Commerce Security` |
+| `SMTP_PORT` | SMTP port | `587` |
+| `USERNAME_GMAIL_SMTP` | SMTP username | `your-email@gmail.com` |
+| `PASSWORD_GMAIL_SMTP` | SMTP app password | `xxxx xxxx xxxx xxxx` |
+| `EMAILS_FROM_NAME` | Sender name shown in inbox | `E-Commerce Security` |
 
 ---
 
-## 3. API Endpoints Reference
+## 3. Authentication & User Management API
 
-### 3.1 Send OTP
+All `/auth/me` profile management endpoints require `Authorization: Bearer <accessToken>`.
 
-Generates a 6-digit OTP code and dispatches it via email to the client.
-
-- **URL**: `POST /auth/send-otp`
-- **Headers**: `Content-Type: application/json`
-
-#### Request Payload (Sign Up OTP):
-```json
-{
-  "email": "user@example.com",
-  "purpose": "signup"
-}
-```
-
-#### Request Payload (Password Reset OTP):
-```json
-{
-  "email": "user@example.com",
-  "purpose": "password_reset"
-}
-```
-
-#### Response (`200 OK`):
-```json
-{
-  "success": true,
-  "message": "6-digit OTP code sent to user@example.com. It will expire in 10 minutes.",
-  "expires_in_minutes": 10
-}
-```
-
-#### Error Responses:
-- `409 Conflict`: If `purpose = "signup"` and the user email is already registered.
-- `404 Not Found`: If `purpose = "password_reset"` and the user email is not found.
-
----
-
-### 3.2 Step 1: Submit Registration Details & Request OTP
-
-Accepts registration form details (`name`, `email`, `password`, `phone`, `address`, etc.), stores pending signup data, and dispatches a 6-digit OTP to the client email.
-
+### 3.1 Step 1: Submit Registration Details & Request OTP
 - **URL**: `POST /auth/signup`
 - **Headers**: `Content-Type: application/json`
 
 #### Request Payload:
 ```json
 {
-  "name": "Jane Doe",
-  "email": "user@example.com",
+  "name": "Alex Morgan",
+  "email": "alex.morgan@example.com",
   "password": "SecretPassword123",
-  "phone": "1234567890",
-  "address": "123 Main Street",
-  "city": "New York",
-  "postalcode": "10001",
+  "phone": "+1 555-0198",
+  "address": "123 Commerce St",
+  "city": "San Francisco",
+  "postalcode": "94105",
   "country": "United States"
 }
 ```
@@ -100,26 +61,47 @@ Accepts registration form details (`name`, `email`, `password`, `phone`, `addres
 ```json
 {
   "success": true,
-  "message": "Registration details received. 6-digit OTP code sent to user@example.com. Please verify OTP to complete account creation.",
-  "email": "user@example.com",
+  "message": "Registration details received. 6-digit OTP code sent to alex.morgan@example.com. Please verify OTP to complete account creation.",
+  "email": "alex.morgan@example.com",
   "expires_in_minutes": 10
 }
 ```
 
 ---
 
-### 3.3 Step 2: Authenticate OTP & Complete Registration
+### 3.2 Request Standalone 6-Digit OTP Code
+- **URL**: `POST /auth/send-otp`
+- **Headers**: `Content-Type: application/json`
 
-Verifies the 6-digit OTP code, creates the user account in PostgreSQL database, and issues a JWT `accessToken` for immediate dashboard authentication.
+#### Request Payload:
+```json
+{
+  "email": "alex.morgan@example.com",
+  "purpose": "signup"
+}
+```
+*(Use `purpose: "password_reset"` for password recovery)*
 
+#### Response (`200 OK`):
+```json
+{
+  "success": true,
+  "message": "6-digit OTP code sent to alex.morgan@example.com. It will expire in 10 minutes.",
+  "expires_in_minutes": 10
+}
+```
+
+---
+
+### 3.3 Step 2: Verify 6-Digit OTP & Complete Signup
 - **URL**: `POST /auth/verify-otp`
 - **Headers**: `Content-Type: application/json`
 
 #### Request Payload:
 ```json
 {
-  "email": "user@example.com",
-  "otp": "123456",
+  "email": "alex.morgan@example.com",
+  "otp": "654321",
   "purpose": "signup"
 }
 ```
@@ -128,14 +110,14 @@ Verifies the 6-digit OTP code, creates the user account in PostgreSQL database, 
 ```json
 {
   "message": "User registered successfully.",
-  "userid": "e33e6355-597a-45eb-8999-b5a300af1a3b",
-  "email": "user@example.com",
-  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "userid": "5d09522b-a187-46bc-bf57-2c9b4407dddf",
+  "email": "alex.morgan@example.com",
+  "accessToken": "eyJhbGciOiJIUzI1Ni...",
   "expiresIn": 3600,
   "user": {
-    "id": "e33e6355-597a-45eb-8999-b5a300af1a3b",
-    "name": "Jane Doe",
-    "email": "user@example.com",
+    "id": "5d09522b-a187-46bc-bf57-2c9b4407dddf",
+    "name": "Alex Morgan",
+    "email": "alex.morgan@example.com",
     "role": "Owner"
   }
 }
@@ -144,16 +126,13 @@ Verifies the 6-digit OTP code, creates the user account in PostgreSQL database, 
 ---
 
 ### 3.4 User Login
-
-Authenticates user credentials and returns a JWT access token.
-
 - **URL**: `POST /auth/login`
 - **Headers**: `Content-Type: application/json`
 
 #### Request Payload:
 ```json
 {
-  "email": "user@example.com",
+  "email": "alex.morgan@example.com",
   "password": "SecretPassword123"
 }
 ```
@@ -162,12 +141,12 @@ Authenticates user credentials and returns a JWT access token.
 ```json
 {
   "success": true,
-  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "accessToken": "eyJhbGciOiJIUzI1Ni...",
   "expiresIn": 3600,
   "user": {
-    "id": "e33e6355-597a-45eb-8999-b5a300af1a3b",
-    "name": "Jane Doe",
-    "email": "user@example.com",
+    "id": "5d09522b-a187-46bc-bf57-2c9b4407dddf",
+    "name": "Alex Morgan",
+    "email": "alex.morgan@example.com",
     "role": "Owner"
   }
 }
@@ -175,19 +154,16 @@ Authenticates user credentials and returns a JWT access token.
 
 ---
 
-### 3.5 Reset Password (Unauthenticated / Forgot Password)
-
-Resets user password using the 6-digit OTP sent to their email.
-
+### 3.5 Reset Password
 - **URL**: `POST /auth/reset-password`
 - **Headers**: `Content-Type: application/json`
 
 #### Request Payload:
 ```json
 {
-  "email": "user@example.com",
+  "email": "alex.morgan@example.com",
   "otp": "654321",
-  "new_password": "NewBrandPassword456"
+  "new_password": "NewSecretPassword456"
 }
 ```
 
@@ -201,75 +177,324 @@ Resets user password using the 6-digit OTP sent to their email.
 
 ---
 
-### 3.6 Get Logged-in Profile
-
-Fetches user profile details for an authenticated user.
-
-- **URL**: `GET /auth/profile`
+### 3.6 Get Authenticated User Profile
+- **URL**: `GET /auth/me`
 - **Headers**: `Authorization: Bearer <accessToken>`
 
 #### Response (`200 OK`):
 ```json
 {
-  "userid": "e33e6355-597a-45eb-8999-b5a300af1a3b",
-  "name": "Jane Doe",
-  "email": "user@example.com",
-  "phone": "1234567890",
-  "address": "123 Main Street",
-  "city": "New York",
-  "postalcode": "10001",
+  "userid": "5d09522b-a187-46bc-bf57-2c9b4407dddf",
+  "name": "Alex Morgan",
+  "email": "alex.morgan@example.com",
+  "phone": "+1 555-0198",
+  "address": "123 Commerce St",
+  "city": "San Francisco",
+  "postalcode": "94105",
   "country": "United States"
 }
 ```
 
 ---
 
-### 3.7 Profile Reset Password (Authenticated)
+### 3.7 Update Authenticated User Profile
+- **URL**: `PUT /auth/me`
+- **Headers**: `Authorization: Bearer <accessToken>`, `Content-Type: application/json`
 
-Resets user password from within user profile using a verified OTP.
-
-- **URL**: `POST /auth/profile/reset-password`
-- **Headers**:
-  - `Authorization: Bearer <accessToken>`
-  - `Content-Type: application/json`
-
-#### Request Payload:
+#### Request Payload (Partial update allowed):
 ```json
 {
-  "email": "user@example.com",
-  "otp": "654321",
-  "new_password": "NewBrandPassword456"
+  "phone": "+1 555-9988",
+  "address": "456 Market St, Suite 200",
+  "city": "San Francisco"
 }
 ```
 
 #### Response (`200 OK`):
 ```json
 {
-  "success": true,
-  "message": "Password reset successfully. You can now login with your new password."
+  "userid": "5d09522b-a187-46bc-bf57-2c9b4407dddf",
+  "name": "Alex Morgan",
+  "email": "alex.morgan@example.com",
+  "phone": "+1 555-9988",
+  "address": "456 Market St, Suite 200",
+  "city": "San Francisco",
+  "postalcode": "94105",
+  "country": "United States"
 }
 ```
 
 ---
 
-## 4. JWT Token Payload Details
+### 3.8 Delete User Account
+- **URL**: `DELETE /auth/me`
+- **Headers**: `Authorization: Bearer <accessToken>`
 
-The `accessToken` returned on signup/login contains standard claims:
-
+#### Response (`200 OK`):
 ```json
 {
-  "sub": "e33e6355-597a-45eb-8999-b5a300af1a3b",
-  "name": "Jane Doe",
-  "email": "user@example.com",
-  "phone": "1234567890",
-  "role": "Owner",
-  "exp": 1754023400
+  "success": true,
+  "message": "User account successfully deleted."
 }
 ```
 
-- `sub`: User ID (`UUID` string).
-- `name`: User full name.
-- `email`: Registered email.
-- `phone`: Contact phone number.
-- `role`: Role (`"Owner"`).
-- `exp`: Unix timestamp indicating token expiry (60 mins).
+---
+
+## 4. Product Management CRUD API
+
+All product CRUD endpoints require `Authorization: Bearer <accessToken>`.
+
+### 4.1 Create Product
+- **URL**: `POST /v1/products`
+- **Headers**: `Authorization: Bearer <accessToken>`
+
+#### Request Payload:
+```json
+{
+  "product_name": "Wireless Ergonomic Mouse",
+  "units_sold": 150,
+  "revenue": 4498.50
+}
+```
+
+#### Response (`201 Created`):
+```json
+{
+  "productid": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a99",
+  "userid": "5d09522b-a187-46bc-bf57-2c9b4407dddf",
+  "product_name": "Wireless Ergonomic Mouse",
+  "units_sold": 150,
+  "revenue": 4498.50
+}
+```
+
+---
+
+### 4.2 List Products
+- **URL**: `GET /v1/products?limit=50&offset=0`
+- **Headers**: `Authorization: Bearer <accessToken>`
+
+#### Response (`200 OK`):
+```json
+{
+  "success": true,
+  "count": 1,
+  "data": [
+    {
+      "productid": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a99",
+      "userid": "5d09522b-a187-46bc-bf57-2c9b4407dddf",
+      "product_name": "Wireless Ergonomic Mouse",
+      "units_sold": 150,
+      "revenue": 4498.50
+    }
+  ]
+}
+```
+
+---
+
+### 4.3 Get Product by ID
+- **URL**: `GET /v1/products/{productid}`
+- **Headers**: `Authorization: Bearer <accessToken>`
+
+#### Response (`200 OK`):
+```json
+{
+  "productid": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a99",
+  "userid": "5d09522b-a187-46bc-bf57-2c9b4407dddf",
+  "product_name": "Wireless Ergonomic Mouse",
+  "units_sold": 150,
+  "revenue": 4498.50
+}
+```
+
+---
+
+### 4.4 Update Product
+- **URL**: `PUT /v1/products/{productid}`
+- **Headers**: `Authorization: Bearer <accessToken>`
+
+#### Request Payload:
+```json
+{
+  "product_name": "Wireless Ergonomic Mouse v2",
+  "revenue": 5998.00
+}
+```
+
+#### Response (`200 OK`):
+```json
+{
+  "productid": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a99",
+  "userid": "5d09522b-a187-46bc-bf57-2c9b4407dddf",
+  "product_name": "Wireless Ergonomic Mouse v2",
+  "units_sold": 150,
+  "revenue": 5998.00
+}
+```
+
+---
+
+### 4.5 Delete Product
+- **URL**: `DELETE /v1/products/{productid}`
+- **Headers**: `Authorization: Bearer <accessToken>`
+
+#### Response (`200 OK`):
+```json
+{
+  "success": true,
+  "message": "Product 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a99' successfully deleted."
+}
+```
+
+---
+
+## 5. Store Management CRUD API
+
+All store CRUD endpoints require `Authorization: Bearer <accessToken>`.
+
+### 5.1 Connect / Create Store
+- **URL**: `POST /v1/stores`
+- **Headers**: `Authorization: Bearer <accessToken>`
+
+#### Request Payload:
+```json
+{
+  "platform": "Shopify",
+  "country": "United States",
+  "status": "connected"
+}
+```
+
+#### Response (`201 Created`):
+```json
+{
+  "storeid": "c11ebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
+  "userid": "5d09522b-a187-46bc-bf57-2c9b4407dddf",
+  "platform": "Shopify",
+  "country": "United States",
+  "status": "connected"
+}
+```
+
+---
+
+### 5.2 List Connected Stores
+- **URL**: `GET /v1/stores?limit=50&offset=0`
+- **Headers**: `Authorization: Bearer <accessToken>`
+
+#### Response (`200 OK`):
+```json
+{
+  "success": true,
+  "count": 1,
+  "data": [
+    {
+      "storeid": "c11ebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
+      "userid": "5d09522b-a187-46bc-bf57-2c9b4407dddf",
+      "platform": "Shopify",
+      "country": "United States",
+      "status": "connected"
+    }
+  ]
+}
+```
+
+---
+
+### 5.3 Get Store Details by ID
+- **URL**: `GET /v1/stores/{storeid}`
+- **Headers**: `Authorization: Bearer <accessToken>`
+
+#### Response (`200 OK`):
+```json
+{
+  "storeid": "c11ebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
+  "userid": "5d09522b-a187-46bc-bf57-2c9b4407dddf",
+  "platform": "Shopify",
+  "country": "United States",
+  "status": "connected"
+}
+```
+
+---
+
+### 5.4 Update Store Details / Status
+- **URL**: `PUT /v1/stores/{storeid}`
+- **Headers**: `Authorization: Bearer <accessToken>`
+
+#### Request Payload:
+```json
+{
+  "status": "syncing"
+}
+```
+
+#### Response (`200 OK`):
+```json
+{
+  "storeid": "c11ebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
+  "userid": "5d09522b-a187-46bc-bf57-2c9b4407dddf",
+  "platform": "Shopify",
+  "country": "United States",
+  "status": "syncing"
+}
+```
+
+---
+
+### 5.5 Disconnect / Delete Store
+- **URL**: `DELETE /v1/stores/{storeid}`
+- **Headers**: `Authorization: Bearer <accessToken>`
+
+#### Response (`200 OK`):
+```json
+{
+  "success": true,
+  "message": "Store 'c11ebc99-9c0b-4ef8-bb6d-6bb9bd380a11' successfully deleted."
+}
+```
+
+---
+
+## 6. Dashboard & Analytics API
+
+All dashboard endpoints require `Authorization: Bearer <accessToken>`.
+
+### 6.1 Aggregated Dashboard Overview
+- **URL**: `GET /v1/dashboard/overview` or `GET /dashboard`
+- **Headers**: `Authorization: Bearer <accessToken>`
+
+#### Response (`200 OK`):
+```json
+{
+  "status": "success",
+  "data": {
+    "connectedStores": [...],
+    "kpiMetrics": [...],
+    "revenueAnalytics": [...],
+    "marketplaceShares": [...],
+    "orderStatusShares": [...],
+    "recentOrders": [...],
+    "topProducts": [...],
+    "inventoryAlerts": [...]
+  }
+}
+```
+
+---
+
+### 6.2 Key Analytics Breakdown Endpoints
+
+| Method | URL | Description |
+| :--- | :--- | :--- |
+| `GET` | `/v1/metrics/kpi` | Returns array of KPI metric summary cards with trend sparklines |
+| `GET` | `/v1/analytics/revenue` | Time-series revenue breakdown grouped by platform |
+| `GET` | `/v1/analytics/marketplace-share` | Revenue percentage share by marketplace platform |
+| `GET` | `/v1/orders` | List of orders associated with the user |
+| `GET` | `/v1/orders/recent` | List of 10 recent orders |
+| `GET` | `/v1/products/analytics` | List of user products for dashboard display |
+| `GET` | `/v1/products/top-selling` | Top selling product rankings |
+| `GET` | `/v1/inventory` | Inventory stock status list |
+| `GET` | `/v1/inventory/alerts` | Low stock and out-of-stock inventory alerts |
+| `GET` | `/` | API status health check |
