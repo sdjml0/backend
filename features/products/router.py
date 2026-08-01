@@ -1,3 +1,4 @@
+from typing import Optional
 from uuid import UUID
 from fastapi import APIRouter, Depends, Query, status
 
@@ -30,17 +31,56 @@ async def create_product(
 @router.get(
     "",
     response_model=ProductListResponse,
-    summary="List user products"
+    summary="List user products with pagination and store filtering"
 )
 async def get_user_products(
-    limit: int = Query(50, ge=1, le=200, description="Max items to retrieve"),
-    offset: int = Query(0, ge=0, description="Number of items to skip"),
+    storeid: Optional[UUID] = Query(None, description="Filter products by Store ID"),
+    store_id: Optional[UUID] = Query(None, description="Alias for storeid filter"),
+    page: int = Query(1, ge=1, description="Page number (1-indexed)"),
+    page_size: int = Query(10, ge=1, le=100, description="Number of items per page"),
+    limit: Optional[int] = Query(None, ge=1, le=200, description="Max items to retrieve (legacy limit)"),
+    offset: Optional[int] = Query(None, ge=0, description="Number of items to skip (legacy offset)"),
     userid: UUID = Depends(get_current_user)
 ):
     """
-    Retrieve all products belonging to the authenticated user with pagination support.
+    Retrieve products belonging to the authenticated user with store filtering and page-based pagination.
     """
-    return await ProductService.get_user_products(userid, limit=limit, offset=offset)
+    target_store = storeid or store_id
+    return await ProductService.get_user_products(
+        userid,
+        storeid=target_store,
+        page=page,
+        page_size=page_size,
+        limit=limit,
+        offset=offset
+    )
+
+
+@router.get(
+    "/store/{storeid}",
+    response_model=ProductListResponse,
+    summary="Get products for a specific store"
+)
+async def get_store_products(
+    storeid: UUID,
+    page: int = Query(1, ge=1, description="Page number (1-indexed)"),
+    page_size: int = Query(10, ge=1, le=100, description="Number of items per page"),
+    limit: Optional[int] = Query(None, ge=1, le=200, description="Max items to retrieve (legacy limit)"),
+    offset: Optional[int] = Query(None, ge=0, description="Number of items to skip (legacy offset)"),
+    userid: UUID = Depends(get_current_user)
+):
+    """
+    Retrieve paginated products belonging to a specific store ID (e.g. Amazon, Shopify).
+    """
+    return await ProductService.get_user_products(
+        userid,
+        storeid=storeid,
+        page=page,
+        page_size=page_size,
+        limit=limit,
+        offset=offset
+    )
+
 
 
 @router.get(

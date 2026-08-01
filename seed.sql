@@ -50,6 +50,7 @@ CREATE TABLE stores (
 CREATE TABLE products (
     productid UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     userid UUID REFERENCES users(userid) ON DELETE CASCADE,
+    storeid UUID REFERENCES stores(storeid) ON DELETE SET NULL,
     product_name VARCHAR(255) NOT NULL,
     units_sold INT DEFAULT 0,
     revenue NUMERIC(12, 2) DEFAULT 0.00
@@ -115,19 +116,20 @@ VALUES
     ('b9999999-9999-9999-9999-999999999999', '5d09522b-a187-46bc-bf57-2c9b4407dddf', 'Mercado Libre', 'Brazil', 'connected'),
     ('b0000000-0000-0000-0000-000000000000', '5d09522b-a187-46bc-bf57-2c9b4407dddf', 'Alibaba', 'Global', 'connected');
 
--- 10 Products for User 5d09522b-a187-46bc-bf57-2c9b4407dddf
-INSERT INTO products (productid, userid, product_name, units_sold, revenue)
+-- 10 Products for User 5d09522b-a187-46bc-bf57-2c9b4407dddf (Associated with Stores)
+INSERT INTO products (productid, userid, storeid, product_name, units_sold, revenue)
 VALUES 
-    ('c1111111-1111-1111-1111-111111111111', '5d09522b-a187-46bc-bf57-2c9b4407dddf', 'Noise Cancelling Headphones', 1245, 18742.50),
-    ('c2222222-2222-2222-2222-222222222222', '5d09522b-a187-46bc-bf57-2c9b4407dddf', 'Smart Watch Series 8', 892, 16280.00),
-    ('c3333333-3333-3333-3333-333333333333', '5d09522b-a187-46bc-bf57-2c9b4407dddf', 'Wireless Earbuds', 1032, 12910.30),
-    ('c4444444-4444-4444-4444-444444444444', '5d09522b-a187-46bc-bf57-2c9b4407dddf', 'Portable Bluetooth Speaker', 645, 7680.20),
-    ('c5555555-5555-5555-5555-555555555555', '5d09522b-a187-46bc-bf57-2c9b4407dddf', 'Phone Charger 20W', 1168, 5326.40),
-    ('c6666666-6666-6666-6666-666666666666', '5d09522b-a187-46bc-bf57-2c9b4407dddf', 'Mechanical Gaming Keyboard', 520, 8900.00),
-    ('c7777777-7777-7777-7777-777777777777', '5d09522b-a187-46bc-bf57-2c9b4407dddf', 'Wireless Ergonomic Mouse', 780, 4680.00),
-    ('c8888888-8888-8888-8888-888888888888', '5d09522b-a187-46bc-bf57-2c9b4407dddf', '4K Ultra HD Monitor 27"', 310, 11470.00),
-    ('c9999999-9999-9999-9999-999999999999', '5d09522b-a187-46bc-bf57-2c9b4407dddf', 'USB-C Multiport Docking Hub', 940, 6580.00),
-    ('c0000000-0000-0000-0000-000000000000', '5d09522b-a187-46bc-bf57-2c9b4407dddf', 'HD Webcam 1080p Auto-Focus', 610, 4270.00);
+    ('c1111111-1111-1111-1111-111111111111', '5d09522b-a187-46bc-bf57-2c9b4407dddf', 'b1111111-1111-1111-1111-111111111111', 'Noise Cancelling Headphones', 1245, 18742.50),
+    ('c2222222-2222-2222-2222-222222222222', '5d09522b-a187-46bc-bf57-2c9b4407dddf', 'b1111111-1111-1111-1111-111111111111', 'Smart Watch Series 8', 892, 16280.00),
+    ('c3333333-3333-3333-3333-333333333333', '5d09522b-a187-46bc-bf57-2c9b4407dddf', 'b2222222-2222-2222-2222-222222222222', 'Wireless Earbuds', 1032, 12910.30),
+    ('c4444444-4444-4444-4444-444444444444', '5d09522b-a187-46bc-bf57-2c9b4407dddf', 'b2222222-2222-2222-2222-222222222222', 'Portable Bluetooth Speaker', 645, 7680.20),
+    ('c5555555-5555-5555-5555-555555555555', '5d09522b-a187-46bc-bf57-2c9b4407dddf', 'b3333333-3333-3333-3333-333333333333', 'Phone Charger 20W', 1168, 5326.40),
+    ('c6666666-6666-6666-6666-666666666666', '5d09522b-a187-46bc-bf57-2c9b4407dddf', 'b3333333-3333-3333-3333-333333333333', 'Mechanical Gaming Keyboard', 520, 8900.00),
+    ('c7777777-7777-7777-7777-777777777777', '5d09522b-a187-46bc-bf57-2c9b4407dddf', 'b4444444-4444-4444-4444-444444444444', 'Wireless Ergonomic Mouse', 780, 4680.00),
+    ('c8888888-8888-8888-8888-888888888888', '5d09522b-a187-46bc-bf57-2c9b4407dddf', 'b4444444-4444-4444-4444-444444444444', '4K Ultra HD Monitor 27"', 310, 11470.00),
+    ('c9999999-9999-9999-9999-999999999999', '5d09522b-a187-46bc-bf57-2c9b4407dddf', 'b5555555-5555-5555-5555-555555555555', 'USB-C Multiport Docking Hub', 940, 6580.00),
+    ('c0000000-0000-0000-0000-000000000000', '5d09522b-a187-46bc-bf57-2c9b4407dddf', 'b5555555-5555-5555-5555-555555555555', 'HD Webcam 1080p Auto-Focus', 610, 4270.00);
+
 
 -- 10 Orders for User 5d09522b-a187-46bc-bf57-2c9b4407dddf
 INSERT INTO orders (orderid, userid, storeid, customer_name, customer_email, amount, status, created_at)
@@ -159,6 +161,7 @@ VALUES
 
 -- Performance Indexes for Scalability
 CREATE INDEX IF NOT EXISTS idx_products_userid ON products(userid);
+CREATE INDEX IF NOT EXISTS idx_products_userid_productid ON products(userid, productid);
 CREATE INDEX IF NOT EXISTS idx_orders_userid ON orders(userid);
 CREATE INDEX IF NOT EXISTS idx_stores_userid ON stores(userid);
 CREATE INDEX IF NOT EXISTS idx_inventory_alerts_userid ON inventory_alerts(userid);
@@ -166,6 +169,7 @@ CREATE INDEX IF NOT EXISTS idx_orders_created_at ON orders(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_orders_userid_storeid ON orders(userid, storeid);
 CREATE INDEX IF NOT EXISTS idx_orders_userid_created_at ON orders(userid, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_products_userid_units_sold ON products(userid, units_sold DESC);
+
 
 -- OTP Verification Table
 CREATE TABLE IF NOT EXISTS otps (

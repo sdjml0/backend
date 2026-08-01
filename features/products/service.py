@@ -1,3 +1,5 @@
+import math
+from typing import Optional
 from uuid import UUID
 from fastapi import HTTPException, status
 
@@ -28,10 +30,44 @@ class ProductService:
         return ProductResponse(**record)
 
     @staticmethod
-    async def get_user_products(userid: UUID, limit: int = 50, offset: int = 0) -> ProductListResponse:
-        records = await ProductRepository.get_products_by_user(userid, limit=limit, offset=offset)
+    async def get_user_products(
+        userid: UUID,
+        storeid: Optional[UUID] = None,
+        page: int = 1,
+        page_size: int = 10,
+        limit: Optional[int] = None,
+        offset: Optional[int] = None
+    ) -> ProductListResponse:
+        effective_limit = limit if limit is not None else page_size
+        if offset is not None:
+            effective_offset = offset
+            effective_page = (offset // effective_limit) + 1
+        else:
+            effective_page = max(1, page)
+            effective_offset = (effective_page - 1) * effective_limit
+
+        records, total_records = await ProductRepository.get_products_paginated_by_user(
+            userid, storeid=storeid, limit=effective_limit, offset=effective_offset
+        )
+
         items = [ProductResponse(**r) for r in records]
-        return ProductListResponse(count=len(items), data=items)
+
+        total_pages = math.ceil(total_records / effective_limit) if total_records > 0 else 0
+        has_next = effective_page < total_pages
+        has_prev = effective_page > 1
+
+        return ProductListResponse(
+            total=total_records,
+            page=effective_page,
+            page_size=effective_limit,
+            total_pages=total_pages,
+            has_next=has_next,
+            has_prev=has_prev,
+            count=len(items),
+            data=items
+        )
+
+
 
     @staticmethod
     async def update_product(productid: UUID, userid: UUID, product_data: ProductUpdate) -> ProductResponse:

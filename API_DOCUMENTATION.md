@@ -303,25 +303,43 @@ All product CRUD endpoints require `Authorization: Bearer <accessToken>`.
 ---
 
 ### 4.2 List Products
-- **URL**: `GET /v1/products?limit=50&offset=0`
+- **URL**: `GET /v1/products?storeid=<store_uuid>&page=1&page_size=10` *(Supports `storeid`, `store_id`, `page`, `page_size`, `limit`, `offset`)*
+- **Alias Endpoint**: `GET /v1/stores/{storeid}/products?page=1&page_size=10` or `GET /v1/products/store/{storeid}`
 - **Headers**: `Authorization: Bearer <accessToken>`
 
 #### Response (`200 OK`):
 ```json
 {
   "success": true,
-  "count": 1,
+  "total": 2,
+  "page": 1,
+  "page_size": 10,
+  "total_pages": 1,
+  "has_next": false,
+  "has_prev": false,
+  "count": 2,
   "data": [
     {
-      "productid": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a99",
+      "productid": "c1111111-1111-1111-1111-111111111111",
       "userid": "5d09522b-a187-46bc-bf57-2c9b4407dddf",
-      "product_name": "Wireless Ergonomic Mouse",
-      "units_sold": 150,
-      "revenue": 4498.50
+      "storeid": "b1111111-1111-1111-1111-111111111111",
+      "product_name": "Noise Cancelling Headphones",
+      "units_sold": 1245,
+      "revenue": 18742.50
+    },
+    {
+      "productid": "c2222222-2222-2222-2222-222222222222",
+      "userid": "5d09522b-a187-46bc-bf57-2c9b4407dddf",
+      "storeid": "b1111111-1111-1111-1111-111111111111",
+      "product_name": "Smart Watch Series 8",
+      "units_sold": 892,
+      "revenue": 16280.00
     }
   ]
 }
 ```
+
+
 
 ---
 

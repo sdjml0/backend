@@ -1,9 +1,13 @@
+from typing import Optional
 from uuid import UUID
 from fastapi import APIRouter, Depends, Query, status
 
 from core.dependencies import get_current_user
 from features.stores.schema import StoreCreate, StoreUpdate, StoreResponse, StoreListResponse
 from features.stores.service import StoreService
+from features.products.schema import ProductListResponse
+from features.products.service import ProductService
+
 
 router = APIRouter(
     prefix="/v1/stores",
@@ -56,6 +60,33 @@ async def get_store_by_id(
     Retrieve details of a specific store by its UUID.
     """
     return await StoreService.get_store_by_id(storeid, userid)
+
+
+@router.get(
+    "/{storeid}/products",
+    response_model=ProductListResponse,
+    summary="List products for a specific store"
+)
+async def get_products_by_store(
+    storeid: UUID,
+    page: int = Query(1, ge=1, description="Page number (1-indexed)"),
+    page_size: int = Query(10, ge=1, le=100, description="Number of items per page"),
+    limit: Optional[int] = Query(None, ge=1, le=200, description="Max items to retrieve (legacy limit)"),
+    offset: Optional[int] = Query(None, ge=0, description="Number of items to skip (legacy offset)"),
+    userid: UUID = Depends(get_current_user)
+):
+    """
+    Retrieve paginated products for a specific connected store (e.g., Amazon, Shopify).
+    """
+    return await ProductService.get_user_products(
+        userid,
+        storeid=storeid,
+        page=page,
+        page_size=page_size,
+        limit=limit,
+        offset=offset
+    )
+
 
 
 @router.put(
