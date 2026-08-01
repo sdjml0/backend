@@ -69,13 +69,14 @@ class SMTP_SSL_IPv4(smtplib.SMTP_SSL):
 class EmailService:
 
     @staticmethod
-    def send_magic_link_email(recipient_email: str, token_code: str, purpose: str = "signup") -> bool:
+    def send_magic_link_email(recipient_email: str, token_code: str = None, purpose: str = "signup", otp_code: str = None) -> bool:
+        active_code = token_code or otp_code or ""
         purpose_label = "Email Verification (Sign Up)" if purpose == "signup" else "Password Reset Request"
         subject = f"Verification Request for {purpose_label}"
 
         frontend_url = getattr(settings, "FRONTEND_URL", "https://frontend-ui-new-liart.vercel.app").rstrip("/")
         action_path = "verify-email" if purpose == "signup" else "forgot-password"
-        action_url = f"{frontend_url}/{action_path}?token={token_code}"
+        action_url = f"{frontend_url}/{action_path}?token={active_code}&resetotp={active_code}"
         button_text = "Verify Email & Log In" if purpose == "signup" else "Reset Password"
 
         html_content = f"""
@@ -280,13 +281,22 @@ class UserService:
     async def reset_password(req: ResetPasswordRequest):
         from features.otp.service import MagicLinkService
 
-        if not req.token:
+        token = req.get_token()
+        new_pwd = req.get_password()
+
+        if not token:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Magic link token parameter is required for password reset."
+                detail="Magic link token parameter ('token' or 'resetotp') is required for password reset."
             )
 
-        otp_row = await OTPRepository.get_valid_otp_by_token(req.token)
+        if not new_pwd:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="New password parameter ('new_password' or 'password') is required."
+            )
+
+        otp_row = await OTPRepository.get_valid_otp_by_token(token)
         if not otp_row or otp_row.get("purpose") != "password_reset":
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -303,7 +313,7 @@ class UserService:
                 detail="User not found."
             )
 
-        hashed_password = hash_password(req.new_password)
+        hashed_password = hash_password(new_pwd)
         await OTPRepository.update_user_password(target_email, hashed_password)
 
         await OTPRepository.delete_otp(otpid)

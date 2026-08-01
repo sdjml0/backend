@@ -23,21 +23,24 @@ class MagicLinkService:
         return secrets.token_urlsafe(32)
 
     @staticmethod
-    async def send_magic_link(email: str, purpose: str = "signup"):
+    async def send_magic_link(email: str, purpose: Optional[str] = None):
         """
         Generates and emails a magic link token for signup or password_reset.
         Token expires in 10 minutes.
         """
+        user_exists = await UserRepository.user_exists(email)
+
+        if not purpose:
+            purpose = "password_reset" if user_exists else "signup"
+
         if purpose == "signup":
-            exists = await UserRepository.user_exists(email)
-            if exists:
+            if user_exists:
                 raise HTTPException(
                     status_code=status.HTTP_409_CONFLICT,
                     detail="User with this email already exists."
                 )
         elif purpose == "password_reset":
-            exists = await UserRepository.user_exists(email)
-            if not exists:
+            if not user_exists:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail="User with this email was not found."

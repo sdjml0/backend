@@ -74,7 +74,7 @@ class EmailService:
         )
 
         frontend_base = getattr(settings, "FRONTEND_URL", "https://frontend-ui-new-liart.vercel.app").rstrip("/")
-        reset_link = f"{frontend_base}/forgot-password?resetotp={otp_code}"
+        reset_link = f"{frontend_base}/forgot-password?token={otp_code}&resetotp={otp_code}"
 
         if is_password_reset:
             subject = "Password Reset Request - E-Commerce Security"

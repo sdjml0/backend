@@ -5,10 +5,15 @@ from pydantic import BaseModel, EmailStr, Field
 
 class SendMagicLinkRequest(BaseModel):
     email: EmailStr
-    purpose: Literal["signup", "password_reset"] = "signup"
+    purpose: Optional[Literal["signup", "password_reset"]] = None
 
 
 SendOTPRequest = SendMagicLinkRequest
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+    purpose: Optional[Literal["signup", "password_reset"]] = "password_reset"
 
 
 class MagicLinkResponse(BaseModel):
@@ -21,8 +26,22 @@ OTPResponse = MagicLinkResponse
 
 
 class ResetPasswordRequest(BaseModel):
-    token: str = Field(..., description="Long alphanumeric magic link token from email URL")
-    new_password: str = Field(..., min_length=6, description="New password minimum 6 chars")
+    token: Optional[str] = Field(None, description="Long alphanumeric magic link token from email URL")
+    resetotp: Optional[str] = Field(None, description="Alias for token")
+    otp: Optional[str] = Field(None, description="Alias for token")
+    code: Optional[str] = Field(None, description="Alias for token")
+
+    new_password: Optional[str] = Field(None, description="New password minimum 6 chars")
+    password: Optional[str] = Field(None, description="Alias for new_password")
+    newPassword: Optional[str] = Field(None, description="Alias for new_password")
+
+    email: Optional[EmailStr] = None
+
+    def get_token(self) -> Optional[str]:
+        return self.token or self.resetotp or self.otp or self.code
+
+    def get_password(self) -> Optional[str]:
+        return self.new_password or self.password or self.newPassword
 
 
 class VerifyLinkResponse(BaseModel):
@@ -33,4 +52,5 @@ class VerifyLinkResponse(BaseModel):
     accessToken: Optional[str] = None
     expiresIn: Optional[int] = None
     user: Optional[dict] = None
+
 

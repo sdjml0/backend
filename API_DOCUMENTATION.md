@@ -69,18 +69,16 @@ All `/auth/me` profile management endpoints require `Authorization: Bearer <acce
 
 ---
 
-### 3.2 Request Magic Link Email
-- **URL**: `POST /auth/send-magic-link` *(Alias: `POST /auth/send-otp`)*
+### 3.2 Request Forgot Password Reset Link
+- **URL**: `POST /auth/forgot-password` *(Alias: `POST /auth/forgotpassword`)*
 - **Headers**: `Content-Type: application/json`
 
 #### Request Payload:
 ```json
 {
-  "email": "alex.morgan@example.com",
-  "purpose": "signup"
+  "email": "alex.morgan@example.com"
 }
 ```
-*(Use `purpose: "password_reset"` for password recovery)*
 
 #### Response (`200 OK`):
 ```json
@@ -93,8 +91,32 @@ All `/auth/me` profile management endpoints require `Authorization: Bearer <acce
 
 ---
 
-### 3.3 Verify Magic Link Token (Email Link Click)
-- **URL**: `GET /auth/verify-link?token=k9X_mP2zQ7vW0xY1zA3bC5dE7fG9hI1jK3mL5nO7pQ9`
+### 3.3 Request Magic Link Email (General / Signup)
+- **URL**: `POST /auth/send-magic-link` *(Alias: `POST /auth/send-otp`)*
+- **Headers**: `Content-Type: application/json`
+
+#### Request Payload:
+```json
+{
+  "email": "alex.morgan@example.com",
+  "purpose": "signup"
+}
+```
+*(If `purpose` is omitted, automatically checks if user exists: sets `password_reset` if user exists, or `signup` if new user)*
+
+#### Response (`200 OK`):
+```json
+{
+  "success": true,
+  "message": "Magic link sent to alex.morgan@example.com. It will expire in 10 minutes.",
+  "expires_in_minutes": 10
+}
+```
+
+---
+
+### 3.4 Verify Magic Link Token (Email Link Click)
+- **URL**: `GET /auth/verify-link?token=k9X_mP2zQ7vW0xY1zA3bC5dE7fG9hI1jK3mL5nO7pQ9` *(Supports `?token=...`, `?resetotp=...`, `?otp=...`, `?code=...`)*
 - **Headers**: None
 
 #### Response (`200 OK` - Signup Verification & Auto-Login):
@@ -126,8 +148,8 @@ All `/auth/me` profile management endpoints require `Authorization: Bearer <acce
 
 ---
 
-### 3.4 Reset Password & Auto-Login
-- **URL**: `POST /auth/reset-password`
+### 3.5 Reset Password & Auto-Login
+- **URL**: `POST /auth/reset-password` *(Alias: `POST /auth/resetpassword`)*
 - **Headers**: `Content-Type: application/json`
 
 #### Request Payload:
@@ -137,6 +159,7 @@ All `/auth/me` profile management endpoints require `Authorization: Bearer <acce
   "new_password": "NewSecretPassword456"
 }
 ```
+*(Field Aliases Supported: Token can be `token`, `resetotp`, `otp`, or `code`; Password can be `new_password`, `password`, or `newPassword`)*
 
 #### Response (`200 OK`):
 ```json

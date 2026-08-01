@@ -1,5 +1,6 @@
+from typing import Optional
 from uuid import UUID
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 
 from core.dependencies import get_current_user
 from features.auth.schema import (
@@ -13,6 +14,7 @@ from features.auth.schema import (
 from features.auth.service import UserService
 from features.otp.schema import (
     SendMagicLinkRequest,
+    ForgotPasswordRequest,
     MagicLinkResponse,
     ResetPasswordRequest,
 )
@@ -34,6 +36,27 @@ async def signup(user: UserSignup):
     Account creation is completed upon verifying the OTP via `/auth/verify-otp`.
     """
     return await UserService.signup(user)
+
+
+@router.post(
+    "/forgot-password",
+    response_model=MagicLinkResponse,
+    summary="Request a password reset link for forgot password page"
+)
+async def forgot_password(req: ForgotPasswordRequest):
+    """
+    Dispatches a magic link email for resetting forgotten password.
+    """
+    return await MagicLinkService.send_magic_link(email=req.email, purpose="password_reset")
+
+
+@router.post(
+    "/forgotpassword",
+    response_model=MagicLinkResponse,
+    include_in_schema=False
+)
+async def forgot_password_alias(req: ForgotPasswordRequest):
+    return await MagicLinkService.send_magic_link(email=req.email, purpose="password_reset")
 
 
 @router.post(
@@ -62,13 +85,19 @@ async def send_otp(req: SendMagicLinkRequest):
     "/verify-link",
     summary="Verify magic link token from email URL"
 )
-async def verify_link(token: str):
+async def verify_link(
+    token: Optional[str] = Query(None),
+    resetotp: Optional[str] = Query(None),
+    otp: Optional[str] = Query(None),
+    code: Optional[str] = Query(None)
+):
     """
-    Verifies the long alphanumeric magic link token from the email URL query param (`?token=...`).
+    Verifies the long alphanumeric magic link token from the email URL query param (`?token=...` or `?resetotp=...`).
     For `signup`, finalizes account creation and returns a fresh JWT access token for instant auto-login.
     For `password_reset`, validates token expiration before rendering the new password form.
     """
-    return await MagicLinkService.verify_link(token)
+    active_token = token or resetotp or otp or code
+    return await MagicLinkService.verify_link(active_token)
 
 
 @router.post(
@@ -79,6 +108,14 @@ async def reset_password(req: ResetPasswordRequest):
     """
     Resets user password in PostgreSQL database using magic link token and returns a fresh JWT access token.
     """
+    return await UserService.reset_password(req)
+
+
+@router.post(
+    "/resetpassword",
+    include_in_schema=False
+)
+async def reset_password_alias(req: ResetPasswordRequest):
     return await UserService.reset_password(req)
 
 
