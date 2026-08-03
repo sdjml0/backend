@@ -358,6 +358,10 @@ class EmailService:
                 return True
             except Exception as e:
                 logger.error(f"❌ Failed to send profile approval email to {recipient_email} via SMTP: {e}")
+
+        # Fallback log output for dev testing if email credentials are not configured or failed
+        logger.info(f"🔑 [DEV / FALLBACK LINK] Email: {recipient_email} | Purpose: profile_update | Link: {action_url}")
+        print(f"🔑 [DEV / FALLBACK LINK] Email: {recipient_email} | Purpose: profile_update | Link: {action_url}")
         return False
 
 
