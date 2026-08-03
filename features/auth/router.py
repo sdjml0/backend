@@ -159,10 +159,12 @@ async def get_current_user_profile_alias(
 
 @router.put(
     "/me",
-    summary="Update authenticated user profile (Sends approval email if changes made)"
+    response_model=UserResponse,
+    summary="Update authenticated user profile"
 )
 @router.patch(
     "/me",
+    response_model=UserResponse,
     include_in_schema=False
 )
 async def update_current_user_profile(
@@ -170,17 +172,19 @@ async def update_current_user_profile(
     userid: UUID = Depends(get_current_user)
 ):
     """
-    Updates profile attributes. If changes are detected, dispatches an approval email link to verify changes.
+    Updates profile attributes (name, phone, address, city, postal code, country) directly in PostgreSQL database.
     """
     return await UserService.update_profile(userid, user_data)
 
 
 @router.put(
     "/profile",
+    response_model=UserResponse,
     summary="Alias for /auth/me (Update profile)"
 )
 @router.patch(
     "/profile",
+    response_model=UserResponse,
     include_in_schema=False
 )
 async def update_current_user_profile_alias(

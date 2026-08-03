@@ -548,84 +548,24 @@ class UserService:
                 detail="User profile not found."
             )
 
-        e = dict(existing)
+        updated = await UserRepository.update_user(userid, user_data)
+        if not updated:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to update profile in database."
+            )
 
-        new_postalcode = user_data.get_postalcode() if hasattr(user_data, "get_postalcode") else getattr(user_data, "postalcode", None)
-        if new_postalcode is None:
-            new_postalcode = e.get("postalcode")
-
-        new_name = user_data.name if user_data.name is not None else e.get("name")
-        new_phone = user_data.phone if user_data.phone is not None else e.get("phone")
-        new_address = user_data.address if user_data.address is not None else e.get("address")
-        new_city = user_data.city if user_data.city is not None else e.get("city")
-        new_country = user_data.country if user_data.country is not None else e.get("country")
-
-        has_changes = False
-        if user_data.name is not None and user_data.name != e.get("name"):
-            has_changes = True
-        if user_data.phone is not None and user_data.phone != e.get("phone"):
-            has_changes = True
-        if user_data.address is not None and user_data.address != e.get("address"):
-            has_changes = True
-        if user_data.city is not None and user_data.city != e.get("city"):
-            has_changes = True
-        if new_postalcode is not None and new_postalcode != e.get("postalcode"):
-            has_changes = True
-        if user_data.country is not None and user_data.country != e.get("country"):
-            has_changes = True
-
-        if not has_changes:
-            return {
-                "success": True,
-                "requires_verification": False,
-                "message": "No profile changes detected.",
-                "user": {
-                    "userid": str(e["userid"]),
-                    "name": e["name"],
-                    "email": e["email"],
-                    "phone": e.get("phone"),
-                    "address": e.get("address"),
-                    "city": e.get("city"),
-                    "postalcode": e.get("postalcode"),
-                    "country": e.get("country"),
-                }
-            }
-
-        from features.otp.service import MagicLinkService
-        token_code = MagicLinkService._generate_alphanumeric_token()
-
-        pending_changes = {
-            "userid": str(userid),
-            "name": new_name,
-            "phone": new_phone,
-            "address": new_address,
-            "city": new_city,
-            "postalcode": new_postalcode,
-            "country": new_country,
-        }
-
-        await OTPRepository.save_otp(
-            email=e["email"],
-            otp_code=token_code,
-            purpose="profile_update",
-            expires_in_minutes=settings.OTP_EXPIRE_MINUTES,
-            payload=pending_changes
+        u = dict(updated)
+        return UserResponse(
+            userid=u["userid"],
+            name=u["name"],
+            email=u["email"],
+            phone=u.get("phone"),
+            address=u.get("address"),
+            city=u.get("city"),
+            postalcode=u.get("postalcode"),
+            country=u.get("country"),
         )
-
-        await asyncio.to_thread(
-            EmailService.send_profile_update_approval_email,
-            recipient_email=e["email"],
-            token_code=token_code,
-            pending_changes=pending_changes
-        )
-
-        return {
-            "success": True,
-            "requires_verification": True,
-            "approval_token": token_code,
-            "message": f"Verification email sent to {e['email']}. Please click the approval link in your email to apply your profile changes.",
-            "email": e["email"]
-        }
 
     @staticmethod
     async def approve_profile_update(token: str, email: Optional[str] = None):
