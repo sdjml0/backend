@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     # OTP & Frontend Configuration
     OTP_EXPIRE_MINUTES: int = 10
     FRONTEND_URL: str = "https://frontend-ui-new-liart.vercel.app"
+    BACKEND_URL: str = "https://ecom-1-0.onrender.com"
 
     # Email API Provider Configurations
     BREVO_API_KEY: str = ""

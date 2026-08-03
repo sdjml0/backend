@@ -231,7 +231,7 @@ class EmailService:
     @staticmethod
     def send_profile_update_approval_email(recipient_email: str, token_code: str, pending_changes: dict) -> bool:
         subject = "Approve Requested Profile Changes"
-        backend_url = (getattr(settings, "BACKEND_URL", None) or getattr(settings, "API_BASE_URL", "http://localhost:8000")).rstrip("/")
+        backend_url = (getattr(settings, "BACKEND_URL", None) or getattr(settings, "API_BASE_URL", "https://ecom-1-0.onrender.com")).rstrip("/")
         encoded_email = urllib.parse.quote(recipient_email)
         action_url = f"{backend_url}/auth/approve-profile-update?approve_profile_token={token_code}&email={encoded_email}"
 

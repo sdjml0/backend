@@ -159,12 +159,10 @@ async def get_current_user_profile_alias(
 
 @router.put(
     "/me",
-    response_model=UserResponse,
     summary="Update authenticated user profile"
 )
 @router.patch(
     "/me",
-    response_model=UserResponse,
     include_in_schema=False
 )
 async def update_current_user_profile(
@@ -179,12 +177,10 @@ async def update_current_user_profile(
 
 @router.put(
     "/profile",
-    response_model=UserResponse,
     summary="Alias for /auth/me (Update profile)"
 )
 @router.patch(
     "/profile",
-    response_model=UserResponse,
     include_in_schema=False
 )
 async def update_current_user_profile_alias(
