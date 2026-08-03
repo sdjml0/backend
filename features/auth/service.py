@@ -4,6 +4,7 @@ import logging
 import socket
 import smtplib
 import urllib.request
+import urllib.parse
 import urllib.error
 from typing import Optional
 from uuid import UUID
@@ -76,7 +77,8 @@ class EmailService:
 
         frontend_url = getattr(settings, "FRONTEND_URL", "https://frontend-ui-new-liart.vercel.app").rstrip("/")
         action_path = "verify-email" if purpose == "signup" else "forgot-password"
-        action_url = f"{frontend_url}/{action_path}?token={active_code}&resetotp={active_code}"
+        encoded_email = urllib.parse.quote(recipient_email)
+        action_url = f"{frontend_url}/{action_path}?token={active_code}&resetotp={active_code}&email={encoded_email}"
         button_text = "Verify Email & Log In" if purpose == "signup" else "Reset Password"
 
         html_content = f"""

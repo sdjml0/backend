@@ -89,15 +89,16 @@ async def verify_link(
     token: Optional[str] = Query(None),
     resetotp: Optional[str] = Query(None),
     otp: Optional[str] = Query(None),
-    code: Optional[str] = Query(None)
+    code: Optional[str] = Query(None),
+    email: Optional[str] = Query(None)
 ):
     """
-    Verifies the long alphanumeric magic link token from the email URL query param (`?token=...` or `?resetotp=...`).
+    Verifies the long alphanumeric magic link token from the email URL query param (`?token=...&email=...` or `?resetotp=...`).
     For `signup`, finalizes account creation and returns a fresh JWT access token for instant auto-login.
     For `password_reset`, validates token expiration before rendering the new password form.
     """
     active_token = token or resetotp or otp or code
-    return await MagicLinkService.verify_link(active_token)
+    return await MagicLinkService.verify_link(token=active_token, email=email)
 
 
 @router.post(

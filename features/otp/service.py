@@ -72,9 +72,9 @@ class MagicLinkService:
     send_otp = send_magic_link
 
     @staticmethod
-    async def verify_link(token: str):
+    async def verify_link(token: str, email: Optional[str] = None):
         """
-        Verifies magic link token from URL query params (`?token=...`).
+        Verifies magic link token from URL query params (`?token=...&email=...`).
         If signup token: Finalizes registration, creates user, generates fresh JWT token for auto-login.
         If password reset token: Validates active status and returns verification metadata.
         """
@@ -86,8 +86,15 @@ class MagicLinkService:
                 detail="Invalid or expired magic link. Please request a new link."
             )
 
+        if email and otp_row.get("email"):
+            if otp_row["email"].lower() != email.strip().lower():
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Magic link token does not match the provided email address."
+                )
+
         otpid = otp_row["otpid"]
-        email = otp_row["email"]
+        record_email = otp_row["email"]
         purpose = otp_row["purpose"]
         payload_data = otp_row["payload"] if "payload" in otp_row and otp_row["payload"] else None
 
@@ -98,7 +105,7 @@ class MagicLinkService:
                 pass
 
         if purpose == "signup" and payload_data and isinstance(payload_data, dict):
-            user_email = payload_data.get("email", email)
+            user_email = payload_data.get("email", record_email)
             exists = await UserRepository.user_exists(user_email)
             if exists:
                 await OTPRepository.delete_otp(otpid)
@@ -153,7 +160,7 @@ class MagicLinkService:
             "success": True,
             "message": "Magic link token validated successfully.",
             "purpose": purpose,
-            "email": email
+            "email": record_email
         }
 
     # Backward compatibility alias

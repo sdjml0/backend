@@ -1,6 +1,6 @@
 # E-Commerce API Documentation
 
-Complete, authoritative API Reference for Authentication, User Profile Management, Product CRUD, Store Management, and E-Commerce Dashboard Analytics.
+Complete, authoritative API Reference for Authentication, User Profile Management, Product CRUD, Store Management, E-Commerce Dashboard Analytics, Database Schema, and Error Specifications.
 
 ---
 
@@ -120,8 +120,8 @@ All endpoints except `/auth/signup`, `/auth/login`, `/auth/forgot-password`, `/a
 ---
 
 ### 3.4 Verify Magic Link Token (Email Link Click & Auto-Login)
-- **URL**: `GET /auth/verify-link?token=k9X_mP2zQ7vW0xY1zA3bC5dE7fG9hI1jK3mL5nO7pQ9`
-- **Supported Query Aliases**: `?token=...`, `?resetotp=...`, `?otp=...`, `?code=...`
+- **URL**: `GET /auth/verify-link?token=k9X_mP2zQ7vW0xY1zA3bC5dE7fG9hI1jK3mL5nO7pQ9&email=alex.morgan%40example.com`
+- **Supported Query Aliases**: `?token=...`, `?resetotp=...`, `?otp=...`, `?code=...`, `?email=...`
 - **Headers**: None
 
 #### Response (`200 OK` - Signup Verification & Instant Auto-Login):
@@ -665,3 +665,118 @@ All dashboard endpoints require `Authorization: Bearer <accessToken>`.
 | `GET` | `/v1/inventory` | Inventory items stock status list | `List[InventoryAlertDTO]` |
 | `GET` | `/v1/inventory/alerts` | Low stock and out-of-stock inventory alerts | `List[InventoryAlertDTO]` |
 | `GET` | `/` | API status health check | `{"message": "...", "version": "1.0.0"}` |
+
+---
+
+## 7. Database Schema & Data Models
+
+The API connects to PostgreSQL using the following schema (defined in `seed.sql`):
+
+- **`users`**:
+  - `userid` (UUID, Primary Key)
+  - `name` (VARCHAR)
+  - `email` (VARCHAR, Unique)
+  - `phone`, `address`, `city`, `postalcode`, `country` (VARCHAR/TEXT)
+  - `password` (VARCHAR, Hashed)
+
+- **`stores`**:
+  - `storeid` (UUID, Primary Key)
+  - `userid` (UUID, Foreign Key -> `users.userid` ON DELETE CASCADE)
+  - `platform` (VARCHAR - e.g., Amazon, Shopify, Flipkart)
+  - `country` (VARCHAR)
+  - `status` (VARCHAR - e.g., connected, syncing, disconnected)
+
+- **`products`**:
+  - `productid` (UUID, Primary Key)
+  - `userid` (UUID, Foreign Key -> `users.userid` ON DELETE CASCADE)
+  - `storeid` (UUID, Foreign Key -> `stores.storeid` ON DELETE SET NULL)
+  - `product_name` (VARCHAR)
+  - `units_sold` (INT)
+  - `revenue` (NUMERIC 12,2)
+
+- **`orders`**:
+  - `orderid` (UUID, Primary Key)
+  - `userid` (UUID, Foreign Key -> `users.userid` ON DELETE CASCADE)
+  - `storeid` (UUID, Foreign Key -> `stores.storeid` ON DELETE SET NULL)
+  - `customer_name`, `customer_email` (VARCHAR)
+  - `amount` (NUMERIC 12,2)
+  - `status` (VARCHAR - e.g., Delivered, Shipped, Processing)
+  - `created_at` (TIMESTAMP)
+
+- **`inventory_alerts`**:
+  - `alert_id` (UUID, Primary Key)
+  - `userid` (UUID, Foreign Key -> `users.userid` ON DELETE CASCADE)
+  - `productid` (UUID, Foreign Key -> `products.productid` ON DELETE CASCADE)
+  - `stock` (INT)
+  - `alert_type` (VARCHAR - e.g., Low Stock, Out of Stock)
+
+- **`dashboard_summary`**:
+  - `summaryid` (UUID, Primary Key)
+  - `userid` (UUID, Foreign Key -> `users.userid` ON DELETE CASCADE)
+  - `revenue`, `orders`, `units_sold`, `refunds`, `profit`, `average_order_value`
+
+---
+
+## 8. Error Handling & Standard Responses
+
+All error responses return standard JSON structures with appropriate HTTP status codes:
+
+- **400 Bad Request**: Invalid inputs or business logic violation.
+  ```json
+  {
+    "detail": "Email already registered."
+  }
+  ```
+- **401 Unauthorized**: Missing or expired Bearer token.
+  ```json
+  {
+    "detail": "Invalid authorization credentials."
+  }
+  ```
+- **404 Not Found**: Resource does not exist or user does not have permission to view it.
+  ```json
+  {
+    "detail": "Product not found."
+  }
+  ```
+- **422 Unprocessable Entity**: Request body validation failure (Pydantic schema).
+  ```json
+  {
+    "detail": [
+      {
+        "loc": ["body", "email"],
+        "msg": "field required",
+        "type": "value_error.missing"
+      }
+    ]
+  }
+  ```
+
+---
+
+## 9. cURL Quickstart Examples
+
+### Login & Get Bearer Token:
+```bash
+curl -X POST "http://localhost:8000/auth/login" \
+     -H "Content-Type: application/json" \
+     -d '{"email": "alex.morgan@example.com", "password": "SecretPassword123"}'
+```
+
+### Fetch Authenticated User Profile:
+```bash
+curl -X GET "http://localhost:8000/auth/me" \
+     -H "Authorization: Bearer <accessToken>"
+```
+
+### Fetch Paginated Products:
+```bash
+curl -X GET "http://localhost:8000/v1/products?page=1&page_size=10" \
+     -H "Authorization: Bearer <accessToken>"
+```
+
+### Fetch Aggregated Dashboard Overview:
+```bash
+curl -X GET "http://localhost:8000/v1/dashboard/overview" \
+     -H "Authorization: Bearer <accessToken>"
+```
