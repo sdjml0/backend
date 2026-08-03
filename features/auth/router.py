@@ -230,6 +230,28 @@ async def approve_profile_update_post(
     return await UserService.approve_profile_update(token=active_token, email=email)
 
 
+@router.get(
+    "/profile-approval-status",
+    summary="Check profile update approval status for real-time app auto-update"
+)
+async def check_profile_approval_status(
+    token: Optional[str] = Query(None),
+    approve_profile_token: Optional[str] = Query(None),
+    approval_token: Optional[str] = Query(None)
+):
+    """
+    Polled by main app window while waiting for email approval.
+    Returns `approved: true` as soon as the user clicks the link in their email.
+    """
+    active_token = token or approve_profile_token or approval_token
+    if not active_token:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Approval token parameter is required."
+        )
+    return await UserService.check_profile_approval_status(token=active_token)
+
+
 @router.delete(
     "/me",
     summary="Delete authenticated user account"

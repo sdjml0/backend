@@ -260,6 +260,7 @@ Accepts `postalcode`, `postal_code`, `postalCode`, `zip`, or `zipcode`.
 {
   "success": true,
   "requires_verification": true,
+  "approval_token": "k9X_mP2zQ7vW0xY1zA3bC5dE7fG9hI1jK3mL5nO7pQ9",
   "message": "Verification email sent to alex.morgan@example.com. Please click the approval link in your email to apply your profile changes.",
   "email": "alex.morgan@example.com"
 }
@@ -286,7 +287,7 @@ Accepts `postalcode`, `postal_code`, `postalCode`, `zip`, or `zipcode`.
 
 ---
 
-### 3.9 Approve Profile Update (Email Approval Click & Auto-Apply)
+### 3.9 Approve Profile Update (Email Approval Click & Direct DB Write)
 - **URL**: `GET /auth/approve-profile-update?approve_profile_token=TOKEN&email=alex.morgan%40example.com` *(Also supports `POST /auth/approve-profile-update` and query parameter `token=...`)*
 - **Supported Token Aliases**: `approve_profile_token`, `token`
 - **Headers**: None
@@ -307,6 +308,41 @@ Accepts `postalcode`, `postal_code`, `postalCode`, `zip`, or `zipcode`.
     "postalcode": "94105",
     "country": "United States"
   }
+}
+```
+
+---
+
+### 3.10 Check Profile Approval Status (App Polling Endpoint)
+- **URL**: `GET /auth/profile-approval-status?approval_token=TOKEN`
+- **Supported Token Query Aliases**: `approval_token`, `approve_profile_token`, `token`
+- **Headers**: None
+
+#### Response (`200 OK` - Approval Completed by Email Link Click):
+```json
+{
+  "approved": true,
+  "status": "completed",
+  "message": "Profile changes approved and updated successfully!",
+  "user": {
+    "userid": "5d09522b-a187-46bc-bf57-2c9b4407dddf",
+    "name": "Alex Morgan",
+    "email": "alex.morgan@example.com",
+    "phone": "+1 555-9988",
+    "address": "456 Market St, Suite 200",
+    "city": "San Francisco",
+    "postalcode": "94105",
+    "country": "United States"
+  }
+}
+```
+
+#### Response (`200 OK` - Waiting for Email Click):
+```json
+{
+  "approved": false,
+  "status": "pending",
+  "message": "Waiting for user to click email approval link."
 }
 ```
 

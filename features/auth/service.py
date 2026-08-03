@@ -622,6 +622,7 @@ class UserService:
         return {
             "success": True,
             "requires_verification": True,
+            "approval_token": token_code,
             "message": f"Verification email sent to {e['email']}. Please click the approval link in your email to apply your profile changes.",
             "email": e["email"]
         }
@@ -678,13 +679,13 @@ class UserService:
         )
 
         updated = await UserRepository.update_user(target_userid, update_data)
-        await OTPRepository.delete_otp(otpid)
-
         if not updated:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to update profile changes in database."
             )
+
+        await OTPRepository.mark_verified(otpid)
 
         u = dict(updated)
         return {
@@ -701,6 +702,56 @@ class UserService:
                 "postalcode": u.get("postalcode"),
                 "country": u.get("country"),
             }
+        }
+
+    @staticmethod
+    async def check_profile_approval_status(token: str):
+        otp_row = await OTPRepository.get_valid_otp_by_token(token)
+        if not otp_row or otp_row.get("purpose") != "profile_update":
+            return {
+                "approved": False,
+                "status": "expired_or_not_found",
+                "message": "Approval token expired or not found."
+            }
+
+        if otp_row.get("is_verified"):
+            otpid = otp_row["otpid"]
+            payload_data = otp_row["payload"]
+            if isinstance(payload_data, str):
+                try:
+                    payload_data = json.loads(payload_data)
+                except Exception:
+                    pass
+
+            userid_str = payload_data.get("userid") if isinstance(payload_data, dict) else None
+            user_data = None
+            if userid_str:
+                u = await UserRepository.get_user_by_id(UUID(userid_str) if isinstance(userid_str, str) else userid_str)
+                if u:
+                    u_dict = dict(u)
+                    user_data = {
+                        "userid": str(u_dict["userid"]),
+                        "name": u_dict["name"],
+                        "email": u_dict["email"],
+                        "phone": u_dict.get("phone"),
+                        "address": u_dict.get("address"),
+                        "city": u_dict.get("city"),
+                        "postalcode": u_dict.get("postalcode"),
+                        "country": u_dict.get("country"),
+                    }
+
+            await OTPRepository.delete_otp(otpid)
+            return {
+                "approved": True,
+                "status": "completed",
+                "message": "Profile changes approved and updated successfully!",
+                "user": user_data
+            }
+
+        return {
+            "approved": False,
+            "status": "pending",
+            "message": "Waiting for user to click email approval link."
         }
 
     @staticmethod
