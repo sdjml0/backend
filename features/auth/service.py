@@ -333,7 +333,31 @@ class EmailService:
                         logger.info(f"✅ Profile approval email sent to {recipient_email} via Brevo.")
                         return True
             except Exception as e:
-                logger.warning(f"⚠️ Brevo API delivery failed ({e}). Falling back to SMTP.")
+                logger.warning(f"⚠️ Brevo API delivery failed ({e}). Falling back to next provider.")
+        if settings.RESEND_API_KEY:
+            try:
+                payload = json.dumps({
+                    "from": f"{settings.EMAILS_FROM_NAME} <{settings.RESEND_FROM_EMAIL}>",
+                    "to": [recipient_email],
+                    "subject": subject,
+                    "html": html_content
+                }).encode("utf-8")
+
+                req = urllib.request.Request(
+                    "https://api.resend.com/emails",
+                    data=payload,
+                    headers={
+                        "Authorization": f"Bearer {settings.RESEND_API_KEY}",
+                        "Content-Type": "application/json"
+                    },
+                    method="POST"
+                )
+                with urllib.request.urlopen(req, timeout=12) as response:
+                    if response.status in (200, 201):
+                        logger.info(f"✅ Profile approval email sent to {recipient_email} via Resend.")
+                        return True
+            except Exception as e:
+                logger.warning(f"⚠️ Resend API delivery failed ({e}). Falling back to SMTP.")
 
         smtp_host = getattr(settings, "SERVER_GMAIL_SMTP", settings.SMTP_HOST)
         smtp_port = getattr(settings, "PORT_GMAIL_SMTP", settings.SMTP_PORT)
@@ -591,7 +615,8 @@ class UserService:
         )
 
         # Dispatch verification email with direct backend approval URL
-        UserService.send_profile_update_approval_email(
+        await asyncio.to_thread(
+            EmailService.send_profile_update_approval_email,
             recipient_email=recipient_email,
             token_code=approval_token,
             pending_changes=pending_changes
