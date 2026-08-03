@@ -221,13 +221,142 @@ class EmailService:
                 logger.info(f"✅ Magic link email delivered to {recipient_email} via SMTP.")
                 return True
             except Exception as e:
-                logger.error(f"❌ SMTP email dispatch failed ({e}).")
-
-        masked_token = token_code[:6] + "..." + token_code[-4:] if len(token_code) > 10 else "***"
-        logger.info(f"ℹ️ Dev/Mock Mode Magic Link Token for {recipient_email}: [{masked_token}]")
+                logger.error(f"❌ Failed to send magic link email to {recipient_email} via SMTP: {e}")
         return False
 
     send_otp_email = send_magic_link_email
+
+    @staticmethod
+    def send_profile_update_approval_email(recipient_email: str, token_code: str, pending_changes: dict) -> bool:
+        subject = "Approve Requested Profile Changes"
+        frontend_url = getattr(settings, "FRONTEND_URL", "https://frontend-ui-new-liart.vercel.app").rstrip("/")
+        encoded_email = urllib.parse.quote(recipient_email)
+        action_url = f"{frontend_url}/settings?approve_profile_token={token_code}&email={encoded_email}"
+
+        changes_list = ""
+        field_labels = {
+            "name": "Full Name",
+            "phone": "Phone Number",
+            "address": "Street Address",
+            "city": "City",
+            "postalcode": "Postal Code",
+            "country": "Country"
+        }
+        for k, label in field_labels.items():
+            if k in pending_changes and pending_changes[k] is not None:
+                changes_list += f"<li><strong>{label}:</strong> {pending_changes[k]}</li>"
+
+        html_content = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>{subject}</title>
+        </head>
+        <body style="margin: 0; padding: 0; background-color: #F8FAFC; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1E293B; -webkit-font-smoothing: antialiased;">
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #F8FAFC; padding: 40px 15px;">
+                <tr>
+                    <td align="center">
+                        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 540px; background-color: #FFFFFF; border-radius: 16px; overflow: hidden; border: 1px solid #E2E8F0; box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.05);">
+                            <tr>
+                                <td style="background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%); padding: 32px 40px; text-align: center;">
+                                    <div style="display: inline-block; background: rgba(16, 185, 129, 0.2); padding: 8px 16px; border-radius: 20px; margin-bottom: 12px; border: 1px solid rgba(52, 211, 153, 0.3);">
+                                        <span style="color: #34D399; font-size: 12px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;">Profile Security Approval</span>
+                                    </div>
+                                    <h1 style="color: #FFFFFF; font-size: 22px; font-weight: 700; margin: 0; letter-spacing: -0.5px;">Approve Profile Changes</h1>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 40px; text-align: left;">
+                                    <h2 style="font-size: 18px; font-weight: 600; color: #0F172A; margin-top: 0; margin-bottom: 8px;">Action Required: Verify Profile Update</h2>
+                                    <p style="font-size: 14px; color: #64748B; margin-top: 0; margin-bottom: 20px; line-height: 1.6;">
+                                        A request was received to update your profile details with the following values:
+                                    </p>
+
+                                    <div style="background-color: #F8FAFC; border-radius: 8px; padding: 16px 20px; margin-bottom: 28px; border: 1px solid #E2E8F0;">
+                                        <ul style="margin: 0; padding-left: 20px; font-size: 13px; color: #334155; line-height: 1.8;">
+                                            {changes_list}
+                                        </ul>
+                                    </div>
+
+                                    <div style="text-align: center; margin-bottom: 36px;">
+                                        <a href="{action_url}" target="_blank" style="background: linear-gradient(135deg, #10B981 0%, #059669 100%); color: #FFFFFF; padding: 16px 40px; text-decoration: none; border-radius: 10px; font-weight: 600; font-size: 16px; display: inline-block; box-shadow: 0 4px 14px rgba(16, 185, 129, 0.3);">
+                                            Approve Changes
+                                        </a>
+                                    </div>
+
+                                    <div style="background-color: #F8FAFC; border-radius: 8px; padding: 16px; margin-bottom: 24px; border-left: 3px solid #10B981;">
+                                        <p style="font-size: 12px; color: #64748B; margin: 0 0 6px 0;">Or copy and paste this link into your browser:</p>
+                                        <a href="{action_url}" style="font-size: 12px; color: #059669; text-decoration: underline; word-break: break-all;">{action_url}</a>
+                                    </div>
+
+                                    <p style="font-size: 13px; color: #94A3B8; margin: 0; line-height: 1.5; text-align: center;">
+                                        ⏱️ This link is valid for <strong style="color: #64748B;">{settings.OTP_EXPIRE_MINUTES} minutes</strong>. If you did not initiate this change, please ignore this email.
+                                    </p>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="background-color: #F8FAFC; border-top: 1px solid #E2E8F0; padding: 24px 40px; text-align: center;">
+                                    <p style="font-size: 12px; color: #94A3B8; margin: 0 0 4px 0;">© 2026 E-Commerce Platform. All rights reserved.</p>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+            </table>
+        </body>
+        </html>
+        """
+
+        if settings.BREVO_API_KEY:
+            try:
+                sender_email = settings.BREVO_SENDER_EMAIL or settings.USERNAME_GMAIL_SMTP or "noreply@ecommerce.com"
+                payload = json.dumps({
+                    "sender": {"name": settings.EMAILS_FROM_NAME, "email": sender_email},
+                    "to": [{"email": recipient_email}],
+                    "replyTo": {"email": sender_email, "name": settings.EMAILS_FROM_NAME},
+                    "subject": subject,
+                    "htmlContent": html_content
+                }).encode("utf-8")
+
+                req = urllib.request.Request(
+                    "https://api.brevo.com/v3/smtp/email",
+                    data=payload,
+                    headers={"api-key": settings.BREVO_API_KEY, "Content-Type": "application/json"},
+                    method="POST"
+                )
+                with urllib.request.urlopen(req, timeout=12) as response:
+                    if response.status in (200, 201, 202):
+                        logger.info(f"✅ Profile approval email sent to {recipient_email} via Brevo.")
+                        return True
+            except Exception as e:
+                logger.warning(f"⚠️ Brevo API delivery failed ({e}). Falling back to SMTP.")
+
+        smtp_host = getattr(settings, "SERVER_GMAIL_SMTP", settings.SMTP_HOST)
+        smtp_port = getattr(settings, "PORT_GMAIL_SMTP", settings.SMTP_PORT)
+        if settings.PASSWORD_GMAIL_SMTP and settings.USERNAME_GMAIL_SMTP:
+            try:
+                msg = MIMEMultipart("alternative")
+                msg["Subject"] = subject
+                msg["From"] = f"{settings.EMAILS_FROM_NAME} <{settings.USERNAME_GMAIL_SMTP}>"
+                msg["To"] = recipient_email
+                msg.attach(MIMEText(html_content, "html"))
+
+                if int(smtp_port) == 465:
+                    server = SMTP_SSL_IPv4(smtp_host, int(smtp_port), timeout=12)
+                else:
+                    server = SMTP_IPv4(smtp_host, int(smtp_port), timeout=12)
+                    server.starttls()
+
+                server.login(settings.USERNAME_GMAIL_SMTP, settings.PASSWORD_GMAIL_SMTP)
+                server.sendmail(settings.USERNAME_GMAIL_SMTP, recipient_email, msg.as_string())
+                server.quit()
+                logger.info(f"✅ Profile approval email sent to {recipient_email} via SMTP.")
+                return True
+            except Exception as e:
+                logger.error(f"❌ Failed to send profile approval email to {recipient_email} via SMTP: {e}")
+        return False
 
 
 class UserService:
@@ -411,7 +540,7 @@ class UserService:
         )
 
     @staticmethod
-    async def update_profile(userid: UUID, user_data: UserUpdate) -> UserResponse:
+    async def update_profile(userid: UUID, user_data: UserUpdate):
         existing = await UserRepository.get_user_by_id(userid)
         if not existing:
             raise HTTPException(
@@ -419,24 +548,160 @@ class UserService:
                 detail="User profile not found."
             )
 
-        updated = await UserRepository.update_user(userid, user_data)
+        e = dict(existing)
+
+        new_postalcode = user_data.get_postalcode() if hasattr(user_data, "get_postalcode") else getattr(user_data, "postalcode", None)
+        if new_postalcode is None:
+            new_postalcode = e.get("postalcode")
+
+        new_name = user_data.name if user_data.name is not None else e.get("name")
+        new_phone = user_data.phone if user_data.phone is not None else e.get("phone")
+        new_address = user_data.address if user_data.address is not None else e.get("address")
+        new_city = user_data.city if user_data.city is not None else e.get("city")
+        new_country = user_data.country if user_data.country is not None else e.get("country")
+
+        has_changes = False
+        if user_data.name is not None and user_data.name != e.get("name"):
+            has_changes = True
+        if user_data.phone is not None and user_data.phone != e.get("phone"):
+            has_changes = True
+        if user_data.address is not None and user_data.address != e.get("address"):
+            has_changes = True
+        if user_data.city is not None and user_data.city != e.get("city"):
+            has_changes = True
+        if new_postalcode is not None and new_postalcode != e.get("postalcode"):
+            has_changes = True
+        if user_data.country is not None and user_data.country != e.get("country"):
+            has_changes = True
+
+        if not has_changes:
+            return {
+                "success": True,
+                "requires_verification": False,
+                "message": "No profile changes detected.",
+                "user": {
+                    "userid": str(e["userid"]),
+                    "name": e["name"],
+                    "email": e["email"],
+                    "phone": e.get("phone"),
+                    "address": e.get("address"),
+                    "city": e.get("city"),
+                    "postalcode": e.get("postalcode"),
+                    "country": e.get("country"),
+                }
+            }
+
+        from features.otp.service import MagicLinkService
+        token_code = MagicLinkService._generate_alphanumeric_token()
+
+        pending_changes = {
+            "userid": str(userid),
+            "name": new_name,
+            "phone": new_phone,
+            "address": new_address,
+            "city": new_city,
+            "postalcode": new_postalcode,
+            "country": new_country,
+        }
+
+        await OTPRepository.save_otp(
+            email=e["email"],
+            otp_code=token_code,
+            purpose="profile_update",
+            expires_in_minutes=settings.OTP_EXPIRE_MINUTES,
+            payload=pending_changes
+        )
+
+        await asyncio.to_thread(
+            EmailService.send_profile_update_approval_email,
+            recipient_email=e["email"],
+            token_code=token_code,
+            pending_changes=pending_changes
+        )
+
+        return {
+            "success": True,
+            "requires_verification": True,
+            "message": f"Verification email sent to {e['email']}. Please click the approval link in your email to apply your profile changes.",
+            "email": e["email"]
+        }
+
+    @staticmethod
+    async def approve_profile_update(token: str, email: Optional[str] = None):
+        otp_row = await OTPRepository.get_valid_otp_by_token(token)
+        if not otp_row or otp_row.get("purpose") != "profile_update":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid or expired profile update approval link. Please try updating your profile again."
+            )
+
+        if email and otp_row.get("email"):
+            if otp_row["email"].lower() != email.strip().lower():
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Approval token does not match the provided email address."
+                )
+
+        otpid = otp_row["otpid"]
+        payload_data = otp_row["payload"]
+
+        if isinstance(payload_data, str):
+            try:
+                payload_data = json.loads(payload_data)
+            except Exception:
+                pass
+
+        if not payload_data or not isinstance(payload_data, dict):
+            await OTPRepository.delete_otp(otpid)
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Malformed profile update payload."
+            )
+
+        userid_str = payload_data.get("userid")
+        if not userid_str:
+            await OTPRepository.delete_otp(otpid)
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="User ID missing from profile update payload."
+            )
+
+        target_userid = UUID(userid_str) if isinstance(userid_str, str) else userid_str
+
+        update_data = UserUpdate(
+            name=payload_data.get("name"),
+            phone=payload_data.get("phone"),
+            address=payload_data.get("address"),
+            city=payload_data.get("city"),
+            postalcode=payload_data.get("postalcode"),
+            country=payload_data.get("country"),
+        )
+
+        updated = await UserRepository.update_user(target_userid, update_data)
+        await OTPRepository.delete_otp(otpid)
+
         if not updated:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to update profile."
+                detail="Failed to update profile changes in database."
             )
 
         u = dict(updated)
-        return UserResponse(
-            userid=u["userid"],
-            name=u["name"],
-            email=u["email"],
-            phone=u.get("phone"),
-            address=u.get("address"),
-            city=u.get("city"),
-            postalcode=u.get("postalcode"),
-            country=u.get("country"),
-        )
+        return {
+            "success": True,
+            "requires_verification": False,
+            "message": "Profile changes approved and updated successfully!",
+            "user": {
+                "userid": str(u["userid"]),
+                "name": u["name"],
+                "email": u["email"],
+                "phone": u.get("phone"),
+                "address": u.get("address"),
+                "city": u.get("city"),
+                "postalcode": u.get("postalcode"),
+                "country": u.get("country"),
+            }
+        }
 
     @staticmethod
     async def delete_account(userid: UUID) -> dict:

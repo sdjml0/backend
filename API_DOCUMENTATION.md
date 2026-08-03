@@ -255,23 +255,64 @@ Accepts `postalcode`, `postal_code`, `postalCode`, `zip`, or `zipcode`.
 }
 ```
 
-#### Response (`200 OK`):
+#### Response (`200 OK` - Profile Changes Detected & Approval Email Dispatched):
 ```json
 {
-  "userid": "5d09522b-a187-46bc-bf57-2c9b4407dddf",
-  "name": "Alex Morgan",
-  "email": "alex.morgan@example.com",
-  "phone": "+1 555-9988",
-  "address": "456 Market St, Suite 200",
-  "city": "San Francisco",
-  "postalcode": "94105",
-  "country": "United States"
+  "success": true,
+  "requires_verification": true,
+  "message": "Verification email sent to alex.morgan@example.com. Please click the approval link in your email to apply your profile changes.",
+  "email": "alex.morgan@example.com"
+}
+```
+
+#### Response (`200 OK` - No Profile Changes Detected):
+```json
+{
+  "success": true,
+  "requires_verification": false,
+  "message": "No profile changes detected.",
+  "user": {
+    "userid": "5d09522b-a187-46bc-bf57-2c9b4407dddf",
+    "name": "Alex Morgan",
+    "email": "alex.morgan@example.com",
+    "phone": "+1 555-0198",
+    "address": "123 Commerce St",
+    "city": "San Francisco",
+    "postalcode": "94105",
+    "country": "United States"
+  }
 }
 ```
 
 ---
 
-### 3.9 Delete User Account
+### 3.9 Approve Profile Update (Email Approval Click & Auto-Apply)
+- **URL**: `GET /auth/approve-profile-update?approve_profile_token=TOKEN&email=alex.morgan%40example.com` *(Also supports `POST /auth/approve-profile-update` and query parameter `token=...`)*
+- **Supported Token Aliases**: `approve_profile_token`, `token`
+- **Headers**: None
+
+#### Response (`200 OK` - Profile Changes Approved & Applied):
+```json
+{
+  "success": true,
+  "requires_verification": false,
+  "message": "Profile changes approved and updated successfully!",
+  "user": {
+    "userid": "5d09522b-a187-46bc-bf57-2c9b4407dddf",
+    "name": "Alex Morgan",
+    "email": "alex.morgan@example.com",
+    "phone": "+1 555-9988",
+    "address": "456 Market St, Suite 200",
+    "city": "San Francisco",
+    "postalcode": "94105",
+    "country": "United States"
+  }
+}
+```
+
+---
+
+### 3.10 Delete User Account
 - **URL**: `DELETE /auth/me`
 - **Headers**: `Authorization: Bearer <accessToken>`
 

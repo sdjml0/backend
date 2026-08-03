@@ -1,6 +1,6 @@
 from typing import Optional
 from uuid import UUID
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from core.dependencies import get_current_user
 from features.auth.schema import (
@@ -159,12 +159,10 @@ async def get_current_user_profile_alias(
 
 @router.put(
     "/me",
-    response_model=UserResponse,
-    summary="Update authenticated user profile"
+    summary="Update authenticated user profile (Sends approval email if changes made)"
 )
 @router.patch(
     "/me",
-    response_model=UserResponse,
     include_in_schema=False
 )
 async def update_current_user_profile(
@@ -172,19 +170,17 @@ async def update_current_user_profile(
     userid: UUID = Depends(get_current_user)
 ):
     """
-    Updates profile attributes (name, phone, address, city, postal code, country) for the authenticated user.
+    Updates profile attributes. If changes are detected, dispatches an approval email link to verify changes.
     """
     return await UserService.update_profile(userid, user_data)
 
 
 @router.put(
     "/profile",
-    response_model=UserResponse,
-    summary="Alias for /auth/me (Update authenticated user profile)"
+    summary="Alias for /auth/me (Update profile)"
 )
 @router.patch(
     "/profile",
-    response_model=UserResponse,
     include_in_schema=False
 )
 async def update_current_user_profile_alias(
@@ -192,6 +188,46 @@ async def update_current_user_profile_alias(
     userid: UUID = Depends(get_current_user)
 ):
     return await UserService.update_profile(userid, user_data)
+
+
+@router.get(
+    "/approve-profile-update",
+    summary="Approve pending profile changes via email link token"
+)
+async def approve_profile_update_get(
+    token: Optional[str] = Query(None, description="Approval token from email link"),
+    approve_profile_token: Optional[str] = Query(None, description="Alias for approval token"),
+    email: Optional[str] = Query(None, description="Recipient email address")
+):
+    """
+    Verifies the profile update token from the email approval link (`?approve_profile_token=...&email=...`).
+    Applies the pending changes to the user profile and returns a success response for the frontend popup alert.
+    """
+    active_token = token or approve_profile_token
+    if not active_token:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Approval token ('token' or 'approve_profile_token') is required."
+        )
+    return await UserService.approve_profile_update(token=active_token, email=email)
+
+
+@router.post(
+    "/approve-profile-update",
+    summary="Approve pending profile changes via POST payload or query"
+)
+async def approve_profile_update_post(
+    token: Optional[str] = Query(None),
+    approve_profile_token: Optional[str] = Query(None),
+    email: Optional[str] = Query(None)
+):
+    active_token = token or approve_profile_token
+    if not active_token:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Approval token ('token' or 'approve_profile_token') is required."
+        )
+    return await UserService.approve_profile_update(token=active_token, email=email)
 
 
 @router.delete(
