@@ -6,12 +6,14 @@ import smtplib
 import urllib.request
 import urllib.parse
 import urllib.error
+import secrets
 from typing import Optional
 from uuid import UUID
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.utils import make_msgid
 from fastapi import HTTPException, status
+from fastapi.responses import RedirectResponse
 
 from core.config import settings
 from core.security import (
@@ -229,9 +231,9 @@ class EmailService:
     @staticmethod
     def send_profile_update_approval_email(recipient_email: str, token_code: str, pending_changes: dict) -> bool:
         subject = "Approve Requested Profile Changes"
-        frontend_url = getattr(settings, "FRONTEND_URL", "https://frontend-ui-new-liart.vercel.app").rstrip("/")
+        backend_url = (getattr(settings, "BACKEND_URL", None) or getattr(settings, "API_BASE_URL", "http://localhost:8000")).rstrip("/")
         encoded_email = urllib.parse.quote(recipient_email)
-        action_url = f"{frontend_url}/settings?approve_profile_token={token_code}&email={encoded_email}"
+        action_url = f"{backend_url}/auth/approve-profile-update?approve_profile_token={token_code}&email={encoded_email}"
 
         changes_list = ""
         field_labels = {
@@ -548,40 +550,78 @@ class UserService:
                 detail="User profile not found."
             )
 
-        updated = await UserRepository.update_user(userid, user_data)
-        if not updated:
+        u_dict = dict(existing)
+        recipient_email = u_dict.get("email")
+        if not recipient_email:
             raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to update profile in database."
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="User email address is missing."
             )
 
-        u = dict(updated)
-        return UserResponse(
-            userid=u["userid"],
-            name=u["name"],
-            email=u["email"],
-            phone=u.get("phone"),
-            address=u.get("address"),
-            city=u.get("city"),
-            postalcode=u.get("postalcode"),
-            country=u.get("country"),
+        pending_changes = user_data.model_dump(exclude_unset=True)
+        if not pending_changes:
+            return UserResponse(
+                userid=u_dict["userid"],
+                name=u_dict["name"],
+                email=u_dict["email"],
+                phone=u_dict.get("phone"),
+                address=u_dict.get("address"),
+                city=u_dict.get("city"),
+                postalcode=u_dict.get("postalcode"),
+                country=u_dict.get("country"),
+            )
+
+        approval_token = secrets.token_urlsafe(32)
+        payload = {
+            "userid": str(userid),
+            **pending_changes
+        }
+
+        # Stage profile changes in OTP repository with strict 10-minute expiration
+        await OTPRepository.save_otp(
+            email=recipient_email,
+            otp_code=approval_token,
+            purpose="profile_update",
+            expires_in_minutes=10,
+            payload=payload
         )
+
+        # Dispatch verification email with direct backend approval URL
+        UserService.send_profile_update_approval_email(
+            recipient_email=recipient_email,
+            token_code=approval_token,
+            pending_changes=pending_changes
+        )
+
+        return {
+            "requires_verification": True,
+            "approval_token": approval_token,
+            "message": "Verification email sent. Please click the approval button in your email within 10 minutes to confirm your profile changes.",
+            "user": {
+                "userid": str(u_dict["userid"]),
+                "name": u_dict["name"],
+                "email": u_dict["email"],
+                "phone": u_dict.get("phone"),
+                "address": u_dict.get("address"),
+                "city": u_dict.get("city"),
+                "postalcode": u_dict.get("postalcode"),
+                "country": u_dict.get("country"),
+            }
+        }
 
     @staticmethod
     async def approve_profile_update(token: str, email: Optional[str] = None):
+        frontend_url = getattr(settings, "FRONTEND_URL", "https://frontend-ui-new-liart.vercel.app").rstrip("/")
         otp_row = await OTPRepository.get_valid_otp_by_token(token)
+
         if not otp_row or otp_row.get("purpose") != "profile_update":
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid or expired profile update approval link. Please try updating your profile again."
-            )
+            redirect_url = f"{frontend_url}/settings?status=error&message=" + urllib.parse.quote("Invalid or expired profile update approval link. Changes were discarded.")
+            return RedirectResponse(url=redirect_url, status_code=302)
 
         if email and otp_row.get("email"):
             if otp_row["email"].lower() != email.strip().lower():
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Approval token does not match the provided email address."
-                )
+                redirect_url = f"{frontend_url}/settings?status=error&message=" + urllib.parse.quote("Approval token email mismatch. Changes were discarded.")
+                return RedirectResponse(url=redirect_url, status_code=302)
 
         otpid = otp_row["otpid"]
         payload_data = otp_row["payload"]
@@ -594,18 +634,14 @@ class UserService:
 
         if not payload_data or not isinstance(payload_data, dict):
             await OTPRepository.delete_otp(otpid)
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Malformed profile update payload."
-            )
+            redirect_url = f"{frontend_url}/settings?status=error&message=" + urllib.parse.quote("Malformed profile update payload. Changes were discarded.")
+            return RedirectResponse(url=redirect_url, status_code=302)
 
         userid_str = payload_data.get("userid")
         if not userid_str:
             await OTPRepository.delete_otp(otpid)
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="User ID missing from profile update payload."
-            )
+            redirect_url = f"{frontend_url}/settings?status=error&message=" + urllib.parse.quote("User ID missing from profile update payload. Changes were discarded.")
+            return RedirectResponse(url=redirect_url, status_code=302)
 
         target_userid = UUID(userid_str) if isinstance(userid_str, str) else userid_str
 
@@ -620,29 +656,13 @@ class UserService:
 
         updated = await UserRepository.update_user(target_userid, update_data)
         if not updated:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to update profile changes in database."
-            )
+            redirect_url = f"{frontend_url}/settings?status=error&message=" + urllib.parse.quote("Failed to update profile changes in database.")
+            return RedirectResponse(url=redirect_url, status_code=302)
 
         await OTPRepository.mark_verified(otpid)
 
-        u = dict(updated)
-        return {
-            "success": True,
-            "requires_verification": False,
-            "message": "Profile changes approved and updated successfully!",
-            "user": {
-                "userid": str(u["userid"]),
-                "name": u["name"],
-                "email": u["email"],
-                "phone": u.get("phone"),
-                "address": u.get("address"),
-                "city": u.get("city"),
-                "postalcode": u.get("postalcode"),
-                "country": u.get("country"),
-            }
-        }
+        redirect_url = f"{frontend_url}/settings?status=approved&message=" + urllib.parse.quote("Changes made have been saved successfully!")
+        return RedirectResponse(url=redirect_url, status_code=302)
 
     @staticmethod
     async def check_profile_approval_status(token: str):
